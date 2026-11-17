@@ -1,0 +1,10 @@
+<!--
+  The busy animation's line (app-loading-line): the m of the mindline emblem as an open centerline.
+  The app strokes it in the text colour, lets it rest, then a wave flattens and regrows it from
+  left to right. Only the first <path> counts: an absolute `M x,y` followed by `C` pieces, about
+  50 units wide; its stroke-width is the line's width.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 18 52 18">
+  <path fill="none" stroke="currentColor" stroke-width="2.64" stroke-linecap="round" stroke-linejoin="round"
+    d="M 2.5,22.25 C 5.5,21.8 9,21.3 11.4,21 C 13.4,20.8 13.6,22.4 13.3,24.5 C 13,27 12.4,29.5 12.4,31 C 12.4,33.2 13.3,33 14.4,31.6 C 16.4,29 19.2,25.2 20.8,22.8 C 22,21 24.3,20.4 23.9,23 C 23.6,25.5 22.8,29 22.8,31 C 22.8,33.2 23.7,33 24.8,31.6 C 26.8,29 29.6,25.2 31.2,22.8 C 32.4,21 34.9,20.4 34.5,23 C 34.2,25.5 33.5,28.5 33.7,30.4 C 34,32.4 36,32.7 38,32.7 C 42,32.7 46,32.7 49.9,32.7" />
+</svg>

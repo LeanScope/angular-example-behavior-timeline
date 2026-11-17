@@ -1,0 +1,159 @@
+// Design tokens. Three layers, all CSS custom properties:
+//   1. primitives  — the only place with raw values; a brand pack (public/brands/<id>/brand.css)
+//                    overrides these.
+//   2. semantic    — what components read (--color-*, --space-*, --radius-*, --motion-*, --chart-*).
+//   3. component   — per component, defined next to the component, built from layer 2.
+// Components never use raw colours, fonts or sizes. The brand guardrail test enforces it.
+
+:root {
+  // 1. Primitives (default brand; primary #c51a1b)
+  --brand-lightness: 52.693%;
+  --brand-hue: 27.67732;
+  --brand-chroma: 0.202279;
+  --neutral-hue: 250;
+  --font-family-brand: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-family-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+  --radius-base: 0.75rem;
+  --space-base: 0.25rem;
+
+  // 2. Semantic: colour
+  --color-bg: oklch(97.6% 0 0);
+  --color-surface: oklch(100% 0 0);
+  --color-surface-sunken: oklch(96.5% 0.006 var(--neutral-hue));
+  --color-border: oklch(90% 0.01 var(--neutral-hue));
+  --color-text: oklch(25% 0.02 var(--neutral-hue));
+  --color-muted: oklch(50% 0.02 var(--neutral-hue));
+  --color-accent: oklch(var(--brand-lightness) var(--brand-chroma) var(--brand-hue));
+  --color-accent-hover: oklch(calc(var(--brand-lightness) - 6%) var(--brand-chroma) var(--brand-hue));
+  --color-accent-soft: oklch(94% calc(var(--brand-chroma) * 0.3) var(--brand-hue));
+  --color-accent-contrast: oklch(100% 0 0);
+  --color-danger: oklch(52% 0.19 27);
+  --color-success: oklch(55% 0.13 155);
+  --color-warning: oklch(72% 0.17 60);
+  --color-focus: oklch(60% var(--brand-chroma) var(--brand-hue));
+
+  // Chart palette: hues spaced around the brand hue, equal lightness for fairness.
+  --chart-1: oklch(55% 0.15 var(--brand-hue));
+  --chart-2: oklch(68% 0.14 calc(var(--brand-hue) + 140));
+  --chart-3: oklch(62% 0.15 calc(var(--brand-hue) - 160));
+  --chart-4: oklch(58% 0.12 calc(var(--brand-hue) + 60));
+  --chart-5: oklch(72% 0.13 calc(var(--brand-hue) - 90));
+  --chart-6: oklch(48% 0.1 calc(var(--brand-hue) + 200));
+  --chart-7: oklch(66% 0.09 calc(var(--brand-hue) - 40));
+  --chart-8: oklch(60% 0.03 var(--neutral-hue));
+  // Section colours for variable code pills (A1, B6, …): one per questionnaire section, quieter
+  // than the chart palette so they never read as a data series.
+  --section-1-bg: oklch(93% 0.045 var(--brand-hue));
+  --section-1-ink: oklch(42% 0.12 var(--brand-hue));
+  --section-2-bg: oklch(94% 0.05 calc(var(--brand-hue) + 135));
+  --section-2-ink: oklch(42% 0.1 calc(var(--brand-hue) + 135));
+  --section-3-bg: oklch(94% 0.05 calc(var(--brand-hue) - 90));
+  --section-3-ink: oklch(44% 0.11 calc(var(--brand-hue) - 90));
+  --section-4-bg: oklch(94% 0.05 calc(var(--brand-hue) + 45));
+  --section-4-ink: oklch(42% 0.12 calc(var(--brand-hue) + 45));
+  --section-5-bg: oklch(94% 0.05 calc(var(--brand-hue) - 165));
+  --section-5-ink: oklch(44% 0.11 calc(var(--brand-hue) - 165));
+  --section-6-bg: oklch(94% 0.045 calc(var(--brand-hue) + 90));
+  --section-6-ink: oklch(42% 0.1 calc(var(--brand-hue) + 90));
+  --section-7-bg: oklch(94% 0.05 calc(var(--brand-hue) - 40));
+  --section-7-ink: oklch(44% 0.12 calc(var(--brand-hue) - 40));
+  --section-8-bg: oklch(94% 0.04 calc(var(--brand-hue) + 180));
+  --section-8-ink: oklch(42% 0.09 calc(var(--brand-hue) + 180));
+  --section-0-bg: var(--color-surface-sunken);
+  --section-0-ink: var(--color-muted);
+  --chart-grid: var(--color-border);
+  --chart-label: var(--color-muted);
+
+  // 2. Semantic: type, space, shape, depth, motion
+  --font-sans: var(--font-family-brand);
+  --font-mono: var(--font-family-mono);
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+  --space-1: calc(var(--space-base) * 1);
+  --space-2: calc(var(--space-base) * 2);
+  --space-3: calc(var(--space-base) * 3);
+  --space-4: calc(var(--space-base) * 4);
+  --space-5: calc(var(--space-base) * 6);
+  --space-6: calc(var(--space-base) * 8);
+  --space-7: calc(var(--space-base) * 12);
+  --space-8: calc(var(--space-base) * 16);
+  --radius-sm: calc(var(--radius-base) * 0.5);
+  --radius-md: var(--radius-base);
+  --radius-lg: calc(var(--radius-base) * 1.5);
+  --radius-pill: 999px;
+  --elevation-1:
+    0 1px 2px oklch(20% 0.02 var(--neutral-hue) / 0.06),
+    0 1px 1px oklch(20% 0.02 var(--neutral-hue) / 0.04);
+  --elevation-2:
+    0 4px 12px oklch(20% 0.02 var(--neutral-hue) / 0.08),
+    0 1px 3px oklch(20% 0.02 var(--neutral-hue) / 0.06);
+  --elevation-3: 0 16px 40px oklch(20% 0.02 var(--neutral-hue) / 0.14);
+  --motion-fast: 140ms;
+  --motion-base: 260ms;
+  --motion-slow: 480ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: linear(0, 0.18 7%, 0.6 18%, 0.94 30%, 1.05 40%, 1.02 55%, 1);
+
+  // Legacy names used by the generic LeanScope UI (src/app/leanscope/ui), mapped to the brand.
+  --ls-text: var(--color-text);
+  --ls-muted: var(--color-muted);
+  --ls-border: var(--color-border);
+  --ls-surface: var(--color-surface-sunken);
+  --ls-accent: var(--color-accent);
+  --ls-accent-soft: var(--color-accent-soft);
+  --ls-danger: var(--color-danger);
+}
+
+// Dark theme, for whatever carries `data-theme="dark"` (player mode of the discussion). Tokens
+// that are built from others are repeated: a custom property keeps the value it had where it was
+// declared.
+[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: oklch(13% 0.01 var(--neutral-hue));
+  --color-surface: oklch(19% 0.012 var(--neutral-hue));
+  --color-surface-sunken: oklch(24% 0.014 var(--neutral-hue));
+  --color-border: oklch(32% 0.015 var(--neutral-hue));
+  --color-text: oklch(95% 0.005 var(--neutral-hue));
+  --color-muted: oklch(72% 0.015 var(--neutral-hue));
+  --color-accent-soft: oklch(30% calc(var(--brand-chroma) * 0.4) var(--brand-hue));
+  --color-danger: oklch(70% 0.17 27);
+
+  --section-1-bg: oklch(34% 0.07 var(--brand-hue));
+  --section-1-ink: oklch(90% 0.06 var(--brand-hue));
+  --section-2-bg: oklch(34% 0.06 calc(var(--brand-hue) + 135));
+  --section-2-ink: oklch(90% 0.06 calc(var(--brand-hue) + 135));
+  --section-3-bg: oklch(34% 0.06 calc(var(--brand-hue) - 90));
+  --section-3-ink: oklch(90% 0.06 calc(var(--brand-hue) - 90));
+  --section-4-bg: oklch(34% 0.06 calc(var(--brand-hue) + 45));
+  --section-4-ink: oklch(90% 0.06 calc(var(--brand-hue) + 45));
+  --section-5-bg: oklch(34% 0.06 calc(var(--brand-hue) - 165));
+  --section-5-ink: oklch(90% 0.06 calc(var(--brand-hue) - 165));
+  --section-6-bg: oklch(34% 0.06 calc(var(--brand-hue) + 90));
+  --section-6-ink: oklch(90% 0.06 calc(var(--brand-hue) + 90));
+  --section-7-bg: oklch(34% 0.06 calc(var(--brand-hue) - 40));
+  --section-7-ink: oklch(90% 0.06 calc(var(--brand-hue) - 40));
+  --section-8-bg: oklch(34% 0.05 calc(var(--brand-hue) + 180));
+  --section-8-ink: oklch(90% 0.05 calc(var(--brand-hue) + 180));
+  --section-0-bg: var(--color-surface-sunken);
+  --section-0-ink: var(--color-muted);
+  --chart-grid: var(--color-border);
+  --chart-label: var(--color-muted);
+
+  --ls-text: var(--color-text);
+  --ls-muted: var(--color-muted);
+  --ls-border: var(--color-border);
+  --ls-surface: var(--color-surface-sunken);
+  --ls-accent-soft: var(--color-accent-soft);
+  --ls-danger: var(--color-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+  }
+}

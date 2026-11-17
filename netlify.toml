@@ -1,0 +1,25 @@
+# Netlify deploy of the app (a static single-page app).
+#
+# The build has no `.env`: set the app settings as environment variables in Netlify
+# (Site configuration → Environment variables), under the names of `.env.example`.
+# scripts/run-ng.mjs reads them and passes them to Angular at build time.
+#
+# Never set a LeanScope token or an LLM key there: the app needs none. The user signs in,
+# and the agent server runs the session on its own keys.
+
+[build]
+  command = "npm run build"
+  publish = "dist/leanscope-agent-kit-angular-quickstart/browser"
+
+[build.environment]
+  # The app settings are not secrets, and all of them end up in the browser bundle on purpose.
+  # Netlify's secrets scan fails a deploy when it finds the value of a variable marked as secret
+  # in the build output; these names are exempt. Keep the list in step with APP_SETTINGS in
+  # scripts/sync-env.mjs.
+  SECRETS_SCAN_OMIT_KEYS = "LEANSCOPE_CHOREO_SCENARIO_GUID,LEANSCOPE_REPOSITORY_ID,LEANSCOPE_SUPABASE_URL,LEANSCOPE_SUPABASE_ANON_KEY,LEANSCOPE_AGENT_SERVER_URL,APP_DEMO,APP_BRAND,APP_INGEST_CHOREO_GUID,APP_STUDY_QUERY_GUID,APP_PLAYER_CHOREO_GUID,APP_ANALYSIS_CHOREO_GUID"
+
+# Client-side routing: every path that is not a file is the app.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

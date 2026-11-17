@@ -1,0 +1,125 @@
+<div class="toolbar" role="toolbar" aria-label="Zeitleiste">
+  <!-- Anchored to the end of the track heads' column. -->
+  <button
+    type="button"
+    class="play-button"
+    [title]="playLabel()"
+    [attr.aria-label]="playLabel()"
+    [disabled]="playDisabled()"
+    (click)="play.emit()"
+  >
+    <ds-icon name="play" />
+  </button>
+
+  <div class="detail">
+    <ds-icon name="text-line" />
+    <span class="slider" [style.--pos]="ui.detailLevel() / (levels.length - 1)">
+      <input
+        type="range"
+        aria-label="Detailstufe"
+        min="0"
+        [max]="levels.length - 1"
+        step="1"
+        [value]="ui.detailLevel()"
+        [attr.aria-valuetext]="levels[ui.detailLevel()]"
+        (input)="setDetail(+$any($event.target).value)"
+      />
+      <span class="thumb-tip" aria-hidden="true">{{ levels[ui.detailLevel()] }}</span>
+    </span>
+    <ds-icon name="text-lines" />
+  </div>
+
+  <div class="actions">
+    <div class="menu-anchor">
+      <button
+        ds-button
+        variant="ghost"
+        size="icon"
+        type="button"
+        class="menu-toggle"
+        title="Weitere Funktionen"
+        aria-label="Weitere Funktionen"
+        aria-haspopup="menu"
+        [attr.aria-expanded]="menuOpen()"
+        (click)="menuOpen.set(!menuOpen())"
+      >
+        <ds-icon name="more-vertical" />
+      </button>
+      @if (menuOpen()) {
+        <div class="menu" role="menu">
+          <button type="button" role="menuitem" (click)="fit(); menuOpen.set(false)">
+            <ds-icon name="search" /> Alles zeigen
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            [disabled]="restartDisabled()"
+            (click)="restart.emit(); menuOpen.set(false)"
+          >
+            <ds-icon name="refresh" /> Diskussion neu starten
+          </button>
+          <button type="button" role="menuitem" (click)="openRecording.emit(); menuOpen.set(false)">
+            <ds-icon name="database" /> Aufzeichnung aus LeanScope öffnen …
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            [disabled]="transcript().clips.length === 0"
+            (click)="exportVtt.emit(); menuOpen.set(false)"
+          >
+            <ds-icon name="download" /> Transkript exportieren (.vtt)
+          </button>
+          <button type="button" role="menuitem" (click)="importVtt.emit(); menuOpen.set(false)">
+            <ds-icon name="upload" /> Transkript importieren (.vtt)
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<div class="canvas" #canvas>
+  <div class="zoom-strip" role="group" aria-label="Zoom">
+    <button type="button" title="Verkleinern" aria-label="Verkleinern" (click)="zoom(-1)">
+      <ds-icon name="minus" />
+    </button>
+    <button type="button" title="Vergrößern" aria-label="Vergrößern" (click)="zoom(1)">
+      <ds-icon name="plus" />
+    </button>
+  </div>
+</div>
+
+@if (castMenu(); as menu) {
+  <div
+    class="cast-menu"
+    role="menu"
+    [attr.aria-label]="menu.role === 'moderator' ? 'Moderation wählen' : 'Teilnehmende hinzufügen'"
+    [style.top.px]="menu.top"
+    [style.left.px]="menu.left"
+  >
+    @for (persona of castMenuOptions(); track persona.guid) {
+      <button type="button" role="menuitem" (click)="pickFromMenu(persona.guid)">
+        <span class="avatar">
+          @if (persona.imageUrl) {
+            <img [src]="persona.imageUrl" alt="" loading="lazy" />
+          } @else {
+            {{ persona.initials }}
+          }
+        </span>
+        <span class="name">{{ persona.name }}</span>
+      </button>
+    } @empty {
+      <p class="empty">Keine weiteren Personas im Repository.</p>
+    }
+  </div>
+}
+
+@if (dropZone(); as zone) {
+  <div class="drop-banner" role="status">
+    @switch (zone) {
+      @case ('interview-guide') { Als Leitfaden einlesen }
+      @case ('stimulus') { Als Stimulus einbinden }
+      @default { Als Screener einlesen }
+    }
+  </div>
+}

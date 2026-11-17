@@ -1,0 +1,9 @@
+{
+  "id": "default",
+  "name": "Datenanalyse",
+  "logo": "brands/default/logo.svg",
+  "locale": "de",
+  "reportFooter": "Vertraulich · nur für den internen Gebrauch",
+  "favicon": "favicon.ico",
+  "busyLine": "brands/default/busy-line.svg"
+}

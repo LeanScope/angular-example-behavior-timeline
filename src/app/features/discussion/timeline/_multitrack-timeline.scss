@@ -1,0 +1,1013 @@
+// vis-timeline styled with the design tokens. Global (see src/styles.scss): vis renders its own
+// DOM, so every rule is scoped under the component's element instead.
+
+app-multitrack-timeline {
+  --track-label-width: 17rem;
+  --clip-height: 1.6rem;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--elevation-1);
+  overflow: hidden;
+
+  &[data-detail='2'] {
+    --clip-height: auto;
+  }
+
+  &[data-drop] {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-accent-soft);
+  }
+
+  // [ ▶ (on the end of the track heads' column) | slider (centred between ▶ and ⋮) | ⋮ ]
+  // The left padding starts right after ▶ (half of it lies right of the column's end), and the
+  // gap before ⋮ mirrors it.
+  .toolbar {
+    --play-size: 2.5rem;
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: var(--space-3);
+    align-items: center;
+    padding: var(--space-2) var(--space-3) var(--space-2)
+      calc(var(--track-label-width) + var(--play-size) / 2 + var(--space-3));
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+
+    .detail {
+      justify-self: center;
+    }
+
+    .actions {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      justify-self: end;
+    }
+  }
+
+  // Will start a live panel. Centred on the border between the track heads and the tracks.
+  .play-button {
+    position: absolute;
+    top: 50%;
+    left: var(--track-label-width);
+    z-index: 1;
+    display: inline-grid;
+    place-items: center;
+    width: var(--play-size);
+    height: var(--play-size);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+    box-shadow: var(--elevation-1);
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    transition: background-color 120ms var(--ease-standard), transform 120ms var(--ease-standard);
+
+    &:hover {
+      background: var(--color-accent-hover);
+    }
+
+    &:active:not(:disabled) {
+      transform: translate(-50%, -50%) scale(0.95);
+    }
+
+    &:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+
+      &:hover {
+        background: var(--color-accent);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-focus);
+      outline-offset: 2px;
+    }
+
+    ds-icon {
+      font-size: 1.125rem;
+      // The triangle's optical centre sits left of its box.
+      transform: translateX(0.06em);
+    }
+
+    svg {
+      fill: currentColor;
+    }
+  }
+
+  // [ − | + ] in the corner above the track heads, right-aligned to their column and as high as
+  // the time axis (--axis-height, set after each redraw).
+  .zoom-strip {
+    position: absolute;
+    top: 0;
+    left: var(--track-label-width);
+    z-index: 6;
+    display: inline-flex;
+    align-items: center;
+    height: var(--axis-height, 2.25rem);
+    padding-right: var(--space-2);
+    transform: translateX(-100%);
+
+    button {
+      display: inline-grid;
+      place-items: center;
+      width: 1.75rem;
+      height: 1.5rem;
+      padding: 0;
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      font-size: var(--text-sm);
+      color: var(--color-muted);
+      cursor: pointer;
+
+      &:hover {
+        background: var(--color-surface-sunken);
+        color: var(--color-text);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--color-focus);
+        outline-offset: -2px;
+      }
+
+      + button {
+        position: relative;
+        margin-left: 1px;
+
+        &::before {
+          content: '';
+          position: absolute;
+          left: -1px;
+          top: 0.25rem;
+          bottom: 0.25rem;
+          border-left: 1px solid var(--color-border);
+        }
+      }
+    }
+  }
+
+  &[data-narrow] .zoom-strip {
+    padding-right: var(--space-1);
+
+    button {
+      width: 1.375rem;
+    }
+  }
+
+  // ≡ one line ——●—— many lines ≣; the level's name in a tip under the thumb.
+  .detail {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    color: var(--color-muted);
+
+    ds-icon {
+      font-size: var(--text-sm);
+    }
+
+    .slider {
+      --thumb: 1rem;
+      position: relative;
+      display: inline-flex;
+    }
+
+    input {
+      width: 7rem;
+      height: 1rem;
+      margin: 0;
+      accent-color: var(--color-muted);
+      cursor: pointer;
+    }
+
+    .thumb-tip {
+      position: absolute;
+      top: calc(100% + var(--space-2));
+      left: calc(var(--pos, 0) * (100% - var(--thumb)) + var(--thumb) / 2);
+      z-index: 20;
+      padding: var(--space-1) var(--space-2);
+      border-radius: var(--radius-sm);
+      background: var(--color-text);
+      color: var(--color-surface);
+      font-size: var(--text-xs);
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      transform: translate(-50%, -0.25rem);
+      transition: opacity 120ms var(--ease-standard), transform 120ms var(--ease-standard);
+      pointer-events: none;
+
+      &::before {
+        content: '';
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        border: 0.3rem solid transparent;
+        border-bottom-color: var(--color-text);
+        transform: translateX(-50%);
+      }
+    }
+
+    .slider:hover .thumb-tip,
+    .slider:focus-within .thumb-tip {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+
+  .menu-anchor {
+    position: relative;
+  }
+
+  .menu-toggle svg {
+    stroke-width: 3.5;
+  }
+
+  .menu {
+    position: absolute;
+    top: calc(100% + var(--space-1));
+    right: 0;
+    z-index: 10;
+    display: grid;
+    min-width: 15rem;
+    padding: var(--space-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    box-shadow: var(--elevation-2, var(--elevation-1));
+
+    button {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      padding: var(--space-2) var(--space-3);
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--color-text);
+      font-size: var(--text-sm);
+      text-align: left;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: var(--color-surface-sunken);
+      }
+
+      &:disabled {
+        color: var(--color-muted);
+        cursor: default;
+      }
+    }
+  }
+
+  // vis-timeline fills the canvas (height: 100%) and scrolls its rows inside it, so the axis and
+  // the track heads stay in place.
+  .canvas {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+
+    > .vis-timeline {
+      position: absolute;
+      inset: 0;
+    }
+  }
+
+  .drop-banner {
+    position: absolute;
+    top: var(--space-2);
+    left: 50%;
+    z-index: 5;
+    padding: var(--space-1) var(--space-4);
+    border-radius: var(--radius-pill);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    transform: translateX(-50%);
+    pointer-events: none;
+  }
+
+  // --- vis-timeline base ----------------------------------------------------------------------
+
+  .vis-timeline {
+    border: 0;
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    color: var(--color-text);
+  }
+
+  .vis-panel.vis-left {
+    width: var(--track-label-width);
+  }
+
+  .vis-panel.vis-left,
+  .vis-panel.vis-top,
+  .vis-panel.vis-center,
+  .vis-panel.vis-bottom {
+    border-color: var(--color-border);
+  }
+
+  .vis-labelset .vis-label,
+  .vis-foreground .vis-group {
+    border-bottom-color: var(--color-border);
+  }
+
+  .vis-labelset .vis-label {
+    color: var(--color-text);
+    background: var(--color-surface);
+    cursor: default;
+
+    .vis-inner {
+      display: flex;
+      box-sizing: border-box;
+      width: 100%;
+      align-items: center;
+      min-height: 2.25rem;
+      padding: var(--space-1) var(--space-3);
+    }
+  }
+
+  .vis-time-axis .vis-text {
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+  }
+
+  .vis-time-axis .vis-grid.vis-minor {
+    border-color: var(--chart-grid, var(--color-border));
+  }
+
+  // The line follows the mouse, so it must never catch the pointer: dragging pans the timeline.
+  .vis-custom-time.cursor {
+    width: 2px;
+    background: var(--color-accent);
+    pointer-events: none;
+  }
+
+  // Space held: hand cursor, drag to pan.
+  &[data-pan] .vis-panel.vis-center {
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
+  }
+
+  // --- Track heads ----------------------------------------------------------------------------
+
+  .track-label {
+    display: inline-flex;
+    align-items: center;
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  // Stands in for the name on a narrow timeline.
+  .track-icon {
+    display: none;
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  // Narrow: the track heads shrink to avatars and icons; names and roles are in the tooltips.
+  &[data-narrow] {
+    --track-label-width: 3.5rem;
+
+    .vis-labelset .vis-label .vis-inner {
+      justify-content: center;
+      padding-inline: 0;
+    }
+
+    .track-icon {
+      display: block;
+    }
+
+    .track-name,
+    .speaker-head .speaker-name,
+    .speaker-head .role-badge {
+      display: none;
+    }
+
+    .speaker-head {
+      flex: none;
+    }
+
+    // The participants' label fills its head (for the cast buttons), so its icon is centred in it.
+    .track-label {
+      justify-content: center;
+    }
+  }
+
+  .vis-label.track-guide,
+  .vis-label.track-questions,
+  .vis-label.track-stimuli {
+    background: var(--color-surface-sunken);
+  }
+
+  .vis-group.track-guide,
+  .vis-group.track-questions,
+  .vis-group.track-stimuli {
+    background: var(--color-surface-sunken);
+  }
+
+  // Sticky: the guide, question and stimuli tracks (head and row) move down by the scroll offset
+  // (--pin, set after each redraw) and cover the speaker tracks scrolling beneath them. The cursor
+  // line stays above them (it lives outside the scrolled panel).
+  .vis-label.track-guide,
+  .vis-label.track-questions,
+  .vis-label.track-stimuli,
+  .vis-group.track-guide,
+  .vis-group.track-questions,
+  .vis-group.track-stimuli {
+    position: relative;
+    z-index: 3;
+    transform: translateY(var(--pin, 0px));
+  }
+
+  // Their bottom edge marks where the scrolled tracks disappear.
+  .vis-label.track-stimuli,
+  .vis-foreground .vis-group.track-stimuli {
+    box-shadow: 0 1px 0 var(--color-border);
+  }
+
+  // vis-timeline's tooltip, wrapped so that long turns fit inside the timeline.
+  .vis-tooltip {
+    max-width: min(26rem, calc(100% - 2rem));
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    box-shadow: var(--elevation-2, var(--elevation-1));
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .vis-label.track-speaker {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--color-surface-sunken);
+    }
+
+    // Selected: the row stays white, the avatar gets a ring outside (like the Panelroom preview)
+    // in the persona's colour, dark grey without one.
+    &.selected .avatar {
+      outline: 2px solid var(--persona-color, var(--color-muted));
+      outline-offset: 2px;
+    }
+  }
+
+  .speaker-head {
+    display: flex;
+    flex: 1;
+    gap: var(--space-2);
+    align-items: center;
+    min-width: 0;
+    font-size: var(--text-sm);
+
+    .avatar {
+      position: relative;
+      display: inline-grid;
+      flex: none;
+      place-items: center;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: var(--radius-pill);
+      background: var(--color-surface-sunken);
+      color: var(--color-text);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      overflow: hidden;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    // Speaking under the red line: a red ring inside, over the portrait.
+    &.speaking .avatar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border: 2px solid var(--color-accent);
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    &.moderator .avatar {
+      background: var(--color-accent);
+      color: var(--color-accent-contrast);
+    }
+
+    &.stub {
+      color: var(--color-muted);
+
+      .avatar {
+        background: var(--color-surface-sunken);
+        color: var(--color-muted);
+        animation: stub-pulse 1.2s var(--ease-standard) infinite alternate;
+      }
+    }
+
+    .speaker-name {
+      flex: 1;
+      font-weight: 700;
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .role-badge {
+      max-width: 6.5rem;
+      margin-left: auto;
+      font-size: 0.5625rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    // The moderator's role keeps its filled background, so it stands apart from the participants.
+    &.moderator .role-badge:not(:hover) {
+      background: var(--color-surface-sunken);
+    }
+  }
+
+  // --- Cast: ▾ persona menus, ×, "Übernehmen" ----------------------------------------------------
+
+  .track-participants .track-label {
+    flex: 1;
+    gap: var(--space-1);
+  }
+
+  .cast-action {
+    display: inline-flex;
+    flex: none;
+    gap: var(--space-1);
+    align-items: center;
+    padding: 0.15rem;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-muted);
+    font: inherit;
+    letter-spacing: normal;
+    text-transform: none;
+    cursor: pointer;
+
+    svg {
+      width: 1rem;
+      height: 1rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    &:hover {
+      background: var(--color-surface-sunken);
+      color: var(--color-text);
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-focus);
+    }
+  }
+
+  // ▾ sits at the end of the head, × only shows on hover.
+  .cast-menu-participants {
+    margin-left: auto;
+  }
+
+  .speaker-head .cast-remove {
+    opacity: 0;
+  }
+
+  .vis-label:hover .cast-remove,
+  .cast-remove:focus-visible {
+    opacity: 1;
+  }
+
+  .cast-submit {
+    padding: 0.15rem var(--space-2);
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+    font-weight: 600;
+
+    &:hover {
+      background: var(--color-accent);
+      color: var(--color-accent-contrast);
+      filter: brightness(1.08);
+    }
+
+    &[disabled] {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+
+  // The session asks for this head's input: accent ring and a short pulse.
+  .vis-label.asked {
+    box-shadow: inset 3px 0 0 var(--color-accent);
+    background: var(--color-accent-soft);
+    animation: cast-ask 2.4s ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  // The head breathes: its tint fades in from the plain surface and back.
+  @keyframes cast-ask {
+    0%,
+    100% {
+      background: color-mix(in oklch, var(--color-accent-soft) 25%, var(--color-surface));
+    }
+    50% {
+      background: var(--color-accent-soft);
+    }
+  }
+
+  .cast-menu {
+    position: absolute;
+    z-index: 20;
+    display: grid;
+    min-width: 14rem;
+    max-height: 18rem;
+    padding: var(--space-1);
+    overflow-y: auto;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    box-shadow: var(--elevation-2, var(--elevation-1));
+
+    button {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      min-height: 2.25rem;
+      padding: var(--space-1) var(--space-2);
+      border: 0;
+      border-radius: var(--radius-sm);
+      background: transparent;
+      color: var(--color-text);
+      font: inherit;
+      font-size: var(--text-sm);
+      text-align: left;
+      cursor: pointer;
+
+      &:hover,
+      &:focus-visible {
+        background: var(--color-surface-sunken);
+      }
+    }
+
+    .avatar {
+      display: inline-grid;
+      flex: none;
+      place-items: center;
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: var(--radius-pill);
+      background: var(--color-surface-sunken);
+      font-size: var(--text-xs);
+      font-weight: 700;
+      overflow: hidden;
+
+      img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+
+    .empty {
+      margin: 0;
+      padding: var(--space-2);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+  }
+
+  // --- Items ----------------------------------------------------------------------------------
+
+  .vis-item {
+    border-radius: var(--radius-sm);
+    border-color: transparent;
+    font-size: var(--text-xs);
+    color: var(--color-text);
+
+    &.vis-selected {
+      border-color: var(--color-accent);
+      box-shadow: 0 0 0 1px var(--color-accent);
+    }
+  }
+
+  // Styled like the sidebar's block headings: lettered pearl, "EINSTIEG", minutes.
+  .vis-item.block {
+    height: 1.75rem;
+    border: 0;
+    border-radius: 0;
+    background: var(--color-surface-sunken);
+    color: var(--color-muted);
+    cursor: default;
+
+    &.planned {
+      background: repeating-linear-gradient(
+        -45deg,
+        var(--color-surface-sunken),
+        var(--color-surface-sunken) 6px,
+        var(--color-surface) 6px,
+        var(--color-surface) 9px
+      );
+    }
+
+    .vis-item-content {
+      padding: 0 var(--space-2);
+      line-height: 1.75rem;
+    }
+
+    .block-label {
+      display: inline-flex;
+      gap: var(--space-2);
+      align-items: center;
+      white-space: nowrap;
+    }
+
+    .block-title {
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .block-minutes {
+      font-weight: 400;
+    }
+
+    .pearl {
+      display: inline-grid;
+      flex: none;
+      place-items: center;
+      box-sizing: border-box;
+      width: 1.25rem;
+      height: 1.25rem;
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-pill);
+      background: var(--color-surface);
+      color: var(--color-muted);
+      font-size: 0.625rem;
+      font-weight: 700;
+      line-height: 1;
+
+      &.done {
+        border-color: var(--color-success);
+        background: var(--color-success);
+        color: var(--color-accent-contrast);
+      }
+    }
+  }
+
+  // Just the pill: whether a question is done shows in the sidebar.
+  .vis-item.badge {
+    // vis-timeline puts box items at the row's top (inline style); centre them instead. The
+    // `translate` property adds to vis' own `transform: translateX()`.
+    top: 50% !important;
+    translate: 0 -50%;
+    border: 0;
+    background: transparent;
+    color: var(--block-ink);
+    font-weight: 700;
+    cursor: pointer;
+
+    &.vis-selected {
+      box-shadow: none;
+    }
+
+    .vis-item-content {
+      padding: 0;
+    }
+
+    // A question shorter than its pill still shows the whole pill.
+    .vis-item-overflow {
+      overflow: visible;
+    }
+
+    .pill {
+      padding: 0.0625rem var(--space-2);
+      border-radius: var(--radius-pill);
+      background: var(--block-bg);
+      font-family: var(--font-mono);
+    }
+
+    &.active .pill,
+    &.vis-selected .pill {
+      box-shadow: 0 0 0 2px var(--block-ink);
+    }
+  }
+
+  .vis-item.vis-box.badge + .vis-line,
+  .vis-item.vis-line {
+    border-color: var(--color-border);
+  }
+
+  .vis-item.vis-dot {
+    display: none;
+  }
+
+  .vis-item.stimulus {
+    height: 2.75rem;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    cursor: grab;
+
+    .stimulus-content {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    img {
+      height: 2rem;
+      width: auto;
+      border-radius: calc(var(--radius-sm) * 0.5);
+      background: var(--color-surface-sunken);
+    }
+
+    .stimulus-kind {
+      padding: 0 var(--space-1);
+      border-radius: calc(var(--radius-sm) * 0.5);
+      background: var(--color-accent-soft);
+      color: var(--color-accent);
+      font-weight: 700;
+    }
+
+    .stimulus-name {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+  }
+
+  // A clip item runs to the speaker's next turn: only the spoken part (--solid) is filled, the
+  // text uses the rest of the room in reduced opacity.
+  .vis-item.clip {
+    --clip-bg: var(--color-surface-sunken);
+    --clip-ink: var(--color-text);
+    height: var(--clip-height);
+    border: 0;
+    background: linear-gradient(to right, var(--clip-bg) var(--solid, 100%), transparent var(--solid, 100%));
+    color: var(--clip-ink);
+    cursor: pointer;
+
+    &.selected {
+      --clip-bg: var(--color-border);
+    }
+
+    // The bubble under the red line, whoever speaks.
+    &.active {
+      --clip-bg: var(--color-accent);
+      --clip-ink: var(--color-accent-contrast);
+    }
+
+    &.vis-selected {
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    // Only the bubble (the spoken part) takes the pointer: tooltip, click and selection.
+    pointer-events: none;
+
+    .clip-hit {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--solid, 100%);
+      pointer-events: auto;
+    }
+
+    .clip-title,
+    .clip-text {
+      position: relative;
+    }
+
+    &.in-question {
+      filter: saturate(1.4);
+    }
+
+    .vis-item-content {
+      display: block;
+      box-sizing: border-box;
+      width: 100%;
+      padding: var(--space-1) var(--space-2);
+      overflow: hidden;
+      // Bold at every detail level: the clipped, half-transparent text is hard to read otherwise.
+      font-weight: 600;
+      background: linear-gradient(
+        to right,
+        var(--clip-ink) var(--solid, 100%),
+        color-mix(in srgb, var(--color-muted) 60%, transparent) var(--solid, 100%)
+      );
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+  }
+
+  // "Titel": the 2–4-word summary on one line, in place of the text.
+  .vis-item.clip .clip-title {
+    display: none;
+  }
+
+  &[data-detail='0'] .vis-item.clip {
+    .clip-text {
+      display: none;
+    }
+
+    .clip-title {
+      display: block;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    // An opaque colour lets the browser draw the colour emoji over the clipped silhouette.
+    .clip-emoji {
+      margin-right: 0.3em;
+      color: var(--color-text);
+      -webkit-text-fill-color: currentColor;
+    }
+  }
+
+  &[data-detail='1'] .vis-item.clip .clip-text {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &[data-detail='2'] .vis-item.clip {
+    .vis-item-content {
+      white-space: normal;
+    }
+
+    .clip-text {
+      display: block;
+      line-height: 1.35;
+    }
+  }
+
+  .vis-item.vis-background.hint {
+    background: transparent;
+
+    .drop-hint {
+      display: inline-block;
+      margin: var(--space-1) var(--space-3);
+      padding: var(--space-1) var(--space-3);
+      border: 1px dashed var(--color-border);
+      border-radius: var(--radius-pill);
+      color: var(--color-muted);
+      font-size: var(--text-xs);
+      white-space: nowrap;
+    }
+  }
+
+  @for $i from 0 through 8 {
+    .tone-#{$i} {
+      --block-bg: var(--section-#{$i}-bg);
+      --block-ink: var(--section-#{$i}-ink);
+    }
+  }
+}
+
+@keyframes stub-pulse {
+  from {
+    opacity: 0.5;
+  }
+
+  to {
+    opacity: 1;
+  }
+}

@@ -1,0 +1,287 @@
+<header class="top">
+  @if (withGuide() && !ui.compact()) {
+    <button
+      ds-button
+      variant="ghost"
+      size="icon"
+      type="button"
+      class="sidebar-toggle"
+      aria-controls="guide-sidebar"
+      [attr.aria-expanded]="ui.sidebarOpen()"
+      [attr.aria-label]="ui.sidebarOpen() ? 'Leitfaden ausblenden' : 'Leitfaden einblenden'"
+      [title]="ui.sidebarOpen() ? 'Leitfaden ausblenden' : 'Leitfaden einblenden'"
+      (click)="ui.sidebarOpen.set(!ui.sidebarOpen())"
+    >
+      <ds-icon [name]="ui.sidebarOpen() ? 'panel-left-close' : 'panel-left-open'" />
+    </button>
+  }
+
+  <nav class="tabs" aria-label="Ansicht">
+    <button type="button" [attr.aria-current]="currentView() === 'study' ? 'page' : null" (click)="show('study')">
+      <ds-icon name="report" /> <span class="tab-label">Studie</span>
+    </button>
+    <button type="button" [attr.aria-current]="currentView() === 'discussion' ? 'page' : null" (click)="show('discussion')">
+      <ds-icon name="users" /> <span class="tab-label">Diskussion</span>
+    </button>
+    <button type="button" [attr.aria-current]="currentView() === 'analysis' ? 'page' : null" (click)="show('analysis')">
+      <ds-icon name="chart" /> <span class="tab-label">Analyse</span>
+    </button>
+  </nav>
+
+  <div class="top-end">
+    <!-- The status light sits in the shell's header; without a shell (embedded) it is here. -->
+    @if (shell.embedded) {
+      <ds-status [state]="status().state" [label]="status().label" [title]="status().title" />
+    }
+
+    @if (currentView() === 'discussion' && !ui.previewHidden()) {
+      <button
+        ds-button
+        variant="ghost"
+        size="icon"
+        type="button"
+        aria-controls="panelroom-preview"
+        [attr.aria-expanded]="ui.previewOpen()"
+        [attr.aria-label]="ui.previewOpen() ? 'Vorschau ausblenden' : 'Vorschau einblenden'"
+        [title]="ui.previewOpen() ? 'Vorschau ausblenden' : 'Vorschau einblenden'"
+        (click)="ui.previewOpen.set(!ui.previewOpen())"
+      >
+        <ds-icon [name]="ui.previewOpen() ? 'panel-top-close' : 'panel-top-open'" />
+      </button>
+    }
+
+    @if (currentView() === 'discussion' && !ui.compact()) {
+      <button
+        ds-button
+        variant="ghost"
+        size="icon"
+        type="button"
+        aria-controls="persona-sidebar"
+        [attr.aria-expanded]="ui.detailOpen()"
+        [attr.aria-label]="ui.detailOpen() ? 'Steckbrief ausblenden' : 'Steckbrief einblenden'"
+        [title]="ui.detailOpen() ? 'Steckbrief ausblenden' : 'Steckbrief einblenden'"
+        (click)="ui.detailOpen.set(!ui.detailOpen())"
+      >
+        <ds-icon [name]="ui.detailOpen() ? 'panel-right-close' : 'panel-right-open'" />
+      </button>
+    }
+  </div>
+</header>
+
+@if (missing().length) {
+  <p class="banner warn" role="status">
+    Noch nicht eingerichtet: {{ missing().join('; ') }}. Zum Ausprobieren:
+    <a href="?demo=wahlplakate">Demo Wahlplakate</a>.
+  </p>
+}
+@if (store.error(); as error) {
+  <p class="banner error" role="alert">Die Studie konnte nicht gelesen werden: {{ error }}</p>
+}
+@if (notice(); as message) {
+  <p class="banner warn" role="status">
+    <span>{{ message }}</span>
+    <button ds-button variant="ghost" size="icon" type="button" aria-label="Hinweis schließen" (click)="notice.set(null)">
+      <ds-icon name="close" />
+    </button>
+  </p>
+}
+
+@if (pickerOpen()) {
+  <app-recording-picker
+    [recordings]="recordings()"
+    [error]="recordingsError()"
+    [current]="shownRecording()"
+    (picked)="pickRecording($event)"
+    (closed)="pickerOpen.set(false)"
+  />
+}
+
+@if (currentView() === 'analysis') {
+  <div class="discussion-view analysis" [class.compact]="ui.compact()" [class.sidebar-closed]="!ui.sidebarOpen()">
+    <aside
+      class="sidebar"
+      id="guide-sidebar"
+      aria-label="Leitfaden"
+      [attr.aria-hidden]="!ui.sidebarOpen()"
+      [attr.inert]="ui.sidebarOpen() ? null : ''"
+    >
+      <div class="sidebar-inner">
+        <app-question-sidebar
+          [guide]="store.guide()"
+          [transcript]="transcript()"
+          [participants]="discussion.participants()"
+          [loading]="store.loading() || guideLoading()"
+          [analysable]="true"
+          (analyse)="analyseQuestion($event)"
+        />
+      </div>
+    </aside>
+    <app-analysis-view
+      class="analysis-main"
+      aria-label="Analyse"
+      [brief]="study().brief"
+      [guide]="store.guide()"
+      [participants]="discussion.participants()"
+    />
+  </div>
+} @else if (currentView() === 'study') {
+  <div class="scroll">
+    <app-study-view
+      [study]="study()"
+      [jobsOf]="jobsOf"
+      [asked]="askedZone()"
+      [recordings]="resources.available ? recordings() : undefined"
+      [recordingsError]="recordingsError()"
+      [currentRecording]="shownRecording()"
+      [loadingRecording]="loadingRecording()"
+      (dropped)="drop($event)"
+      (dismiss)="dismissJob($event)"
+      (recordingPicked)="pickRecording($event, false)"
+      (recordingCleared)="clearRecording()"
+    />
+  </div>
+} @else {
+  <div
+    class="discussion-view"
+    [class.compact]="ui.compact()"
+    [class.sidebar-closed]="!ui.sidebarOpen()"
+    [class.detail-closed]="!ui.detailOpen()"
+  >
+    <aside
+      class="sidebar"
+      id="guide-sidebar"
+      aria-label="Leitfaden"
+      [attr.aria-hidden]="!ui.sidebarOpen()"
+      [attr.inert]="ui.sidebarOpen() ? null : ''"
+    >
+      <div class="sidebar-inner">
+        <app-question-sidebar
+          [guide]="store.guide()"
+          [transcript]="transcript()"
+          [participants]="discussion.participants()"
+          [loading]="store.loading() || guideLoading()"
+        />
+      </div>
+    </aside>
+
+    <section class="stage" aria-label="Diskussion">
+      <!-- Folds away like the sidebars (see .preview-fold); only gone without room for it. -->
+      @if (previewShown()) {
+        <div
+          #previewFold
+          class="preview-fold"
+          id="panelroom-preview"
+          [class.closed]="!previewOpen()"
+          [attr.aria-hidden]="!previewOpen()"
+          [attr.inert]="previewOpen() ? null : ''"
+        >
+          <div class="preview-inner">
+            <app-panelroom-preview
+              [style.zoom]="previewZoom()"
+              [bubbleLines]="previewLines()"
+              [interactive]="!player.open()"
+              [voiceLevel]="player.open() ? player.level : null"
+              [participants]="discussion.participants()"
+              [transcript]="transcript()"
+              [guide]="store.guide()"
+              [stimuli]="study().stimuli"
+              [moderatorName]="discussion.moderatorName()"
+              [moderatorImage]="discussion.moderatorImage()"
+              [moderatorColor]="discussion.moderatorColor()"
+            />
+          </div>
+        </div>
+      }
+
+      <div class="actions">
+        @if (discussion.error(); as error) {
+          <span class="error">{{ error }}</span>
+        }
+        @for (job of jobs(); track job.id) {
+          @if (job.state === 'uploading' || job.state === 'reading' || job.state === 'error') {
+            <span class="job" [attr.data-state]="job.state">
+              {{ job.fileNames.join(', ') }}: {{ job.message }}
+              @if (job.state === 'error') {
+                <button type="button" class="dismiss" aria-label="Meldung schließen" (click)="dismissJob(job.id)">
+                  <ds-icon name="close" />
+                </button>
+              }
+            </span>
+          }
+        }
+      </div>
+
+      @if (showQuestion()) {
+        <app-discussion-question />
+      }
+
+      <app-multitrack-timeline
+        [study]="discussionStudy()"
+        [transcript]="transcript()"
+        [blocks]="blocks()"
+        [moderatorName]="discussion.moderatorName()"
+        [moderatorImage]="discussion.moderatorImage()"
+        [moderatorColor]="discussion.moderatorColor()"
+        [playLabel]="playLabel()"
+        [playDisabled]="hasClips() ? player.missing().length > 0 : startDisabled()"
+        [restartDisabled]="startDisabled()"
+        [cast]="timelineCast()"
+        (castPick)="pickCast($event)"
+        (castRemove)="discussion.removeParticipant($event)"
+        (castSubmit)="submitCast($event)"
+        (play)="play()"
+        (restart)="startDiscussion()"
+        (dropped)="drop($event)"
+        (stimulusMoved)="moveStimulus($event)"
+        (exportVtt)="exportVtt()"
+        (importVtt)="pickVtt()"
+        (openRecording)="openRecordingPicker()"
+      />
+
+      @if (player.open()) {
+        <app-player-strip
+          [blocks]="blocks()"
+          [transcript]="transcript()"
+          [participants]="discussion.participants()"
+          [moderatorImage]="discussion.moderatorImage()"
+        />
+      }
+    </section>
+
+    <aside
+      class="sidebar detail"
+      id="persona-sidebar"
+      aria-label="Steckbrief"
+      [attr.aria-hidden]="!ui.detailOpen()"
+      [attr.inert]="ui.detailOpen() ? null : ''"
+    >
+      <div class="sidebar-inner">
+        <app-persona-detail
+          [participant]="selected() ?? null"
+          [participants]="discussion.participants()"
+          [transcript]="transcript()"
+          [stimuli]="study().stimuli"
+          [moderatorName]="discussion.moderatorName()"
+          [moderatorImage]="discussion.moderatorImage()"
+          [moderatorColor]="discussion.moderatorColor()"
+          (closed)="ui.deselectPersona()"
+        />
+      </div>
+    </aside>
+  </div>
+}
+
+@if (player.open()) {
+  <button
+    ds-button
+    variant="ghost"
+    size="icon"
+    type="button"
+    class="player-close"
+    title="Player schließen (Esc)"
+    aria-label="Player schließen"
+    (click)="closePlayer()"
+  >
+    <ds-icon name="close" />
+  </button>
+}

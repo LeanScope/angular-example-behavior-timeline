@@ -1,0 +1,6 @@
+/* Default brand: logo-matched red (#c51a1b). Only overrides primitives (see tokens.scss). */
+:root[data-brand='default'] {
+  --brand-lightness: 52.693%;
+  --brand-hue: 27.67732;
+  --brand-chroma: 0.202279;
+}

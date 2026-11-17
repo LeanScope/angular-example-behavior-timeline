@@ -1,0 +1,10 @@
+{
+  "id": "mindline",
+  "name": "Mindline Insights",
+  "logo": "brands/mindline/logo.svg",
+  "locale": "de",
+  "reportFooter": "Mindline · Marktforschung",
+  "wordmark": "brands/mindline/wordmark.svg",
+  "favicon": "brands/mindline/favicon.png",
+  "busyLine": "brands/mindline/busy-line.svg"
+}

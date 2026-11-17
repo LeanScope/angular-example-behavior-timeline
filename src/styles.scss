@@ -1,0 +1,102 @@
+// Global styles. All values come from the design tokens; brands override them in
+// public/brands/<id>/brand.css.
+@use './app/design-system/tokens';
+@use './app/features/discussion/timeline/multitrack-timeline';
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light;
+  background: var(--color-bg);
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--color-accent);
+}
+
+// Plain buttons (used by the generic LeanScope UI). App code uses ds-button.
+button,
+.button {
+  display: inline-block;
+  font: inherit;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+// View transitions: one cross-fade for the root, morphs for named findings.
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-base);
+  animation-timing-function: var(--ease-standard);
+}
+
+::view-transition-group(*) {
+  animation-duration: var(--motion-slow);
+  animation-timing-function: var(--ease-standard);
+}
+
+
+// Role badge (DsRoleBadge, and the timeline's speaker heads built outside Angular). The persona's
+// colour comes in as --role-color, the text colour on it as --role-ink (see `inkOn`). On hover the
+// badge fills with its outline colour; the full role is in its tooltip (title).
+.role-badge {
+  display: inline-block;
+  flex: none;
+  max-width: 7rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--role-color, var(--color-border));
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--color-muted);
+  cursor: default;
+  user-select: none;
+  transition:
+    background var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &:hover {
+    border-color: var(--role-color, var(--color-muted));
+    background: var(--role-color, var(--color-muted));
+    color: var(--role-ink, var(--color-surface));
+  }
+}

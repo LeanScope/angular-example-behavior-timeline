@@ -1,0 +1,344 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  // Fills whatever frames it: the app shell's content area, or the iframe when embedded.
+  height: 100%;
+}
+
+.top {
+  display: grid;
+  // The side columns never get narrower than their content: otherwise the right end would be
+  // pushed out of the window on small screens.
+  grid-template-columns: minmax(auto, 1fr) auto minmax(auto, 1fr);
+  gap: var(--space-5);
+  align-items: center;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  position: relative;
+  z-index: 30;
+}
+
+.sidebar-toggle {
+  grid-column: 1;
+  justify-self: start;
+}
+
+.tabs {
+  grid-column: 2;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-sunken);
+
+  > * {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    padding: var(--space-1) var(--space-4);
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--color-muted);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    transition:
+      background var(--motion-fast) var(--ease-standard),
+      color var(--motion-fast) var(--ease-standard);
+  }
+
+  > [aria-current='page'] {
+    background: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: var(--elevation-1);
+  }
+}
+
+.top-end {
+  grid-column: 3;
+  justify-self: end;
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+// Small screens: the header keeps the icons and drops the words.
+@media (max-width: 36rem) {
+  .top {
+    gap: var(--space-2);
+    padding-inline: var(--space-3);
+  }
+
+  .tabs > * {
+    padding-inline: var(--space-3);
+  }
+
+  .tab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+.banner {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--text-sm);
+
+  &.warn {
+    background: var(--color-accent-soft);
+  }
+
+  &.info {
+    background: var(--color-surface-sunken);
+    color: var(--color-muted);
+  }
+
+  &.error {
+    background: color-mix(in oklch, var(--color-danger) 12%, var(--color-surface));
+    color: var(--color-danger);
+  }
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.discussion-view {
+  --sidebar-width: 22rem;
+  --left-track: minmax(16rem, var(--sidebar-width));
+  --right-track: minmax(16rem, var(--sidebar-width));
+  display: grid;
+  flex: 1;
+  grid-template-columns: var(--left-track) minmax(0, 1fr) var(--right-track);
+  min-height: 0;
+  transition: grid-template-columns var(--motion-base) var(--ease-standard);
+
+  &.sidebar-closed {
+    --left-track: minmax(0, 0);
+
+    .sidebar:not(.detail) .sidebar-inner {
+      opacity: 0;
+      transform: translateX(calc(var(--space-5) * -1));
+    }
+  }
+
+  // The profile sidebar on the right folds away the same way, to the other side.
+  &.detail-closed {
+    --right-track: minmax(0, 0);
+
+    .sidebar.detail .sidebar-inner {
+      opacity: 0;
+      transform: translateX(var(--space-5));
+    }
+  }
+}
+
+.sidebar {
+  display: flex;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--color-border);
+
+  // White, so the speech bubble and the stimulus stand out (the stage around is grey).
+  &.detail {
+    justify-content: flex-end;
+    background: var(--color-surface);
+    border-right: 0;
+    border-left: 1px solid var(--color-border);
+  }
+}
+
+// Keeps the content at full width while its grid track collapses.
+.sidebar-inner {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  // Fills the open track (16–22rem); keeps its minimum while the track folds to 0.
+  width: 100%;
+  min-width: 16rem;
+  min-height: 0;
+  transition:
+    opacity var(--motion-base) var(--ease-standard),
+    transform var(--motion-base) var(--ease-standard);
+
+  > * {
+    flex: 1;
+  }
+}
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-4) var(--space-5);
+  overflow: auto;
+
+  // The timeline takes the rest of the stage and scrolls its rows itself. Only when even its
+  // minimum doesn't fit does the stage scroll.
+  app-multitrack-timeline {
+    flex: 1 1 0;
+    min-height: 18rem;
+  }
+
+  // Control flow leaves only comments behind: nothing to show, no gap.
+  > :empty {
+    display: none;
+  }
+}
+
+// The Panelroom preview folds up like the sidebars fold sideways: its grid row shrinks to 0 (the
+// timeline grows into the room) while the content fades and slides up. The negative margin takes
+// back the stage's gap below it.
+.preview-fold {
+  display: grid;
+  flex: none;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows var(--motion-base) var(--ease-standard),
+    margin-bottom var(--motion-base) var(--ease-standard);
+
+  &.closed {
+    grid-template-rows: 0fr;
+    margin-bottom: calc(var(--space-4) * -1);
+
+    .preview-inner {
+      opacity: 0;
+      transform: translateY(calc(var(--space-5) * -1));
+    }
+  }
+}
+
+.preview-inner {
+  min-height: 0;
+  // Clips while folding, but leaves room for the card's shadow.
+  overflow: clip;
+  overflow-clip-margin: var(--space-3);
+  transition:
+    opacity var(--motion-base) var(--ease-standard),
+    transform var(--motion-base) var(--ease-standard);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  font-size: var(--text-sm);
+
+  .error {
+    color: var(--color-danger);
+  }
+
+  .job {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-pill);
+    background: var(--color-surface-sunken);
+    color: var(--color-muted);
+    font-size: var(--text-xs);
+
+    &[data-state='error'] {
+      color: var(--color-danger);
+    }
+  }
+
+  .dismiss {
+    display: inline-flex;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+  }
+}
+
+
+// The Analyse view: the guide on the left, the questions and answers in the rest.
+.discussion-view.analysis {
+  grid-template-columns: var(--left-track) minmax(0, 1fr);
+}
+
+.analysis-main {
+  min-width: 0;
+  min-height: 0;
+}
+
+// Small screen or portrait (DiscussionUiState.compact): the stage only, no sidebars to unfold.
+.discussion-view.compact {
+  grid-template-columns: minmax(0, 1fr);
+
+  .sidebar {
+    display: none;
+  }
+
+  .stage {
+    padding: var(--space-3);
+  }
+}
+
+// Player mode (PlayerService.open): the page covers the window in the dark theme
+// (`data-theme="dark"` on the host), with only the preview, as large as it fits, and the player
+// strip below it. Entering and leaving is a view transition (see `morph`): the theme cross-fades
+// and the preview, named below, grows and shrinks.
+.preview-inner {
+  view-transition-name: player-preview;
+}
+
+:host(.player-mode) {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  height: auto;
+  background: var(--color-bg);
+  color: var(--color-text);
+
+  .top,
+  .banner,
+  .sidebar,
+  .actions,
+  app-discussion-question,
+  app-multitrack-timeline {
+    display: none;
+  }
+
+  .discussion-view {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stage {
+    gap: var(--space-4);
+    padding: var(--space-6) var(--space-7) var(--space-5);
+    overflow: hidden;
+  }
+
+  .preview-fold {
+    flex: 1;
+    align-items: center;
+    min-height: 0;
+  }
+
+  .preview-inner {
+    overflow: visible;
+  }
+}
+
+.player-close {
+  position: fixed;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 101;
+}

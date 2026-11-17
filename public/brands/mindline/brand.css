@@ -1,0 +1,9 @@
+/* Mindline brand: logo-matched red (#c51a1b), warm neutrals and rounder corners. */
+:root[data-brand='mindline'] {
+  --brand-lightness: 52.693%;
+  --brand-hue: 27.67732;
+  --brand-chroma: 0.202279;
+  --neutral-hue: 90;
+  --radius-base: 1.1rem;
+  --font-family-brand: 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+}

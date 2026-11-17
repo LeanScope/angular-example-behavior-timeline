@@ -1,0 +1,465 @@
+WEBVTT
+Wahlplakate im Bürgerdialog
+
+NOTE
+```yaml
+title: Wahlplakate im Bürgerdialog
+description: Moderatorin Maren spricht mit sechs Bürgerinnen und Bürgern unterschiedlichen Alters, unterschiedlicher Grundhaltung und politischer Orientierung über die Fragen, die ihre Wahl entscheiden, und über echte Wahlplakate aus verschiedenen Wahlkämpfen der letzten Jahre. Die Teilnehmenden sind fiktiv.
+study:
+  brief:
+    name: Studienbrief Wahlplakate
+    goals:
+      - Verstehen, welche Themen und Signale Wahlentscheidungen quer durch die Milieus prägen.
+      - Erste qualitative Hinweise zur Wirkung von Wahlplakaten gewinnen.
+    researchQuestions:
+      - Welche politischen Fragen sind für die Teilnehmenden wahlentscheidend?
+      - Woran machen sie fest, ob sie einer Partei Lösungen zutrauen?
+      - Wie wirken Wahlplakate spontan – und was macht sie glaubwürdig oder unglaubwürdig?
+      - Beeinflussen Plakate die Wahlentscheidung überhaupt?
+  guide:
+    name: Leitfaden Bürgerdialog
+    blocks:
+      - heading: Block A – Einstieg (10 min)
+        questions:
+          - key: q_a1
+            text: Stellen Sie sich bitte kurz vor – und was beschäftigt Sie politisch gerade am meisten?
+      - heading: Block B – Politische Fragen (20 min)
+        questions:
+          - key: q_b1
+            text: Welche Frage entscheidet für Sie diese Wahl?
+          - key: q_b2
+            text: Wem trauen Sie zu, das zu lösen – und woran machen Sie das fest?
+      - heading: Block C – Wahlplakate (25 min)
+        questions:
+          - key: q_c1
+            text: Was ist Ihr spontaner Eindruck von diesem Plakat?
+          - key: q_c2
+            text: Wie wirken die Plakate im Vergleich?
+          - key: q_c3
+            text: Was macht ein Wahlplakat für Sie glaubwürdig?
+      - heading: Block D – Abschluss (10 min)
+        questions:
+          - key: q_d1
+            text: Hat schon einmal ein Plakat Ihre Wahlentscheidung beeinflusst?
+  screener:
+    name: Screener Bürgerdialog
+    criteria:
+      - Wahlberechtigt, 18 Jahre oder älter
+      - Mischung aus Alter, Region (Ost/West, Stadt/Land) und Bildung
+      - "Quote nach politischer Orientierung: links, Mitte, rechts, unentschlossen, Nichtwählende"
+  stimuli:
+    - key: s_spd
+      name: "SPD: „Die Frau gegen Blau“"
+      url: https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRMxjYbVEjsm9JIPMnPa8W9grGsCy1-1pq1VTlqt6L5gQ&s=10
+      mimeType: image/jpeg
+      start: "00:03:18.400"
+      end: "00:03:55.200"
+      credit: "Plakat: SPD · Standbild: SRF News"
+    - key: s_linke
+      name: "Die Linke: „Wir kümmern uns um alle Familien“ (Bundestagswahl 2025)"
+      url: https://www.die-linke-mainfranken.de/fileadmin/_processed_/7/9/csm_Posting_Personenplakat_Heidi_DieLinke_BTW25_01_2681c28855.png
+      mimeType: image/png
+      start: "00:03:55.200"
+      end: "00:04:22.400"
+      credit: "Plakat: Die Linke · Foto: Olaf Krostitz"
+    - key: s_cdu
+      name: "CDU: „Fleiß muss sich wieder lohnen.“ (Bundestagswahl 2025)"
+      url: https://www.cdu.de/app/uploads/resized/2025/02/Parteiplakate_Welle-I_1434x1076px_BTW2025_Fleiss-1250x938-c-center.jpg
+      mimeType: image/jpeg
+      start: "00:04:22.400"
+      end: "00:04:51.200"
+      credit: "Plakat: CDU · cdu.de"
+    - key: s_afd
+      name: "AfD: „Neue Deutsche? Machen wir selber.“"
+      url: https://bilder.deutschlandfunk.de/ba/f2/d8/17/baf2d817-7abb-48d0-9d30-8991c8bf6a38/afd-wahlplakat-schwangere-frau-neue-deutsche-100-1920x1080.jpg
+      mimeType: image/jpeg
+      start: "00:04:51.200"
+      end: "00:05:36.000"
+      credit: "Plakat: AfD · Foto: Deutschlandfunk"
+    - key: s_gruene
+      name: "Grüne: „Werte verteidigen. Frieden schützen.“ (Europawahl 2024)"
+      url: https://www.gruene.de/_next/image?url=https%3A%2F%2Fcms.gruene.de%2Fuploads%2Fassets%2F2GB40P24001_Europawahl-2024_Themenplakate_841x1189-ISO300-2402233.jpg&w=828&q=75
+      mimeType: image/webp
+      start: "00:05:36.000"
+      end: "00:06:00.800"
+      credit: "Plakat: Bündnis 90/Die Grünen · gruene.de"
+actors:
+  Maren:
+    personaRef: demo-maren
+    moderator: true
+    imageUrl: https://media.leanscope.io/media/2349/f5003491-87b8-4cc3-9bf4-52d96943afb7.png
+  Jonas Albers:
+    personaRef: demo-jonas-albers
+    imageUrl: https://dev.api.agents.leanscope.ai/api/v1/resources/public/match?kind=image&q=19-year-old%20young%20man%2C%20apprentice%20mechatronics%20technician%2C%20casual%2C%20curious
+    role: Erstwähler
+    age: 19
+    gender: männlich
+    profession: Auszubildender Mechatroniker
+    demographics: 19, Rostock, ledig
+    profile: Wählt zum ersten Mal. Informiert sich über Kurzvideos und Freunde und hat noch keine feste Partei.
+    attributes:
+      Grundhaltung: pragmatisch, neugierig, misstrauisch gegenüber Werbung
+      Politische Orientierung: unentschlossen, Mitte
+    color: "#3b5ba5"
+    ocean:
+      openness: 0.7
+      conscientiousness: 0.5
+      extraversion: 0.6
+      agreeableness: 0.6
+      neuroticism: 0.4
+  Lea Okafor:
+    personaRef: demo-lea-okafor
+    imageUrl: https://dev.api.agents.leanscope.ai/api/v1/resources/public/match?kind=image&q=27-year-old%20young%20woman%2C%20nurse%2C%20idealistic%20and%20engaged
+    role: Pflegefachkraft
+    age: 27
+    gender: weiblich
+    profession: Pflegefachkraft
+    demographics: 27, Köln, in Partnerschaft
+    profile: Arbeitet im Schichtdienst auf einer Intensivstation und engagiert sich in einer Klimagruppe.
+    attributes:
+      Grundhaltung: idealistisch, engagiert, ungeduldig mit Stillstand
+      Politische Orientierung: links-ökologisch
+    color: "#2f7d6d"
+    ocean:
+      openness: 0.85
+      conscientiousness: 0.7
+      extraversion: 0.65
+      agreeableness: 0.75
+      neuroticism: 0.45
+  Markus Brandl:
+    personaRef: demo-markus-brandl
+    imageUrl: https://dev.api.agents.leanscope.ai/api/v1/resources/public/match?kind=image&q=44-year-old%20man%2C%20master%20electrician%20running%20his%20own%20business%2C%20hands-on%2C%20confident
+    role: Handwerksmeister
+    age: 44
+    gender: männlich
+    profession: Elektromeister mit eigenem Betrieb
+    demographics: 44, Landshut, verheiratet, drei Kinder
+    profile: Führt einen Betrieb mit zwölf Angestellten. Ärgert sich über Bürokratie und den Fachkräftemangel.
+    attributes:
+      Grundhaltung: zupackend, leistungsorientiert, skeptisch gegenüber Versprechen
+      Politische Orientierung: wirtschaftsliberal, Mitte-rechts
+    color: "#c0622d"
+    ocean:
+      openness: 0.5
+      conscientiousness: 0.85
+      extraversion: 0.6
+      agreeableness: 0.5
+      neuroticism: 0.35
+  Petra Lindner:
+    personaRef: demo-petra-lindner
+    imageUrl: https://dev.api.agents.leanscope.ai/api/v1/resources/public/match?kind=image&q=58-year-old%20woman%2C%20retail%20saleswoman%2C%20disappointed%2C%20direct
+    role: Verkäuferin
+    age: 58
+    gender: weiblich
+    profession: Verkäuferin im Einzelhandel
+    demographics: 58, Gera, verwitwet
+    profile: Hat bei der letzten Wahl nicht gewählt. Fühlt sich von „denen da oben“ nicht gehört; die Preise belasten sie.
+    attributes:
+      Grundhaltung: enttäuscht, direkt, protestbereit
+      Politische Orientierung: Nichtwählerin, offen für eine Protestwahl
+    color: "#8a4fa3"
+    ocean:
+      openness: 0.4
+      conscientiousness: 0.7
+      extraversion: 0.5
+      agreeableness: 0.45
+      neuroticism: 0.6
+  Hans-Werner Kühn:
+    personaRef: demo-hans-werner-kuehn
+    imageUrl: https://dev.api.agents.leanscope.ai/api/v1/resources/public/match?kind=image&q=71-year-old%20retired%20man%2C%20former%20locksmith%2C%20thoughtful%2C%20traditional
+    role: Rentner
+    age: 71
+    gender: männlich
+    profession: Rentner, früher Schlosser und Betriebsrat
+    demographics: 71, Gelsenkirchen, verheiratet
+    profile: Vierzig Jahre im selben Betrieb, lange Gewerkschafter. Wählt seit Jahrzehnten dieselbe Richtung, zweifelt aber zunehmend.
+    attributes:
+      Grundhaltung: traditionsbewusst, solidarisch, nachdenklich
+      Politische Orientierung: sozialdemokratisch
+    color: "#c2457a"
+    ocean:
+      openness: 0.45
+      conscientiousness: 0.8
+      extraversion: 0.55
+      agreeableness: 0.7
+      neuroticism: 0.4
+  Selin Yıldız:
+    personaRef: demo-selin-yildiz
+    imageUrl: https://dev.api.agents.leanscope.ai/api/v1/resources/public/match?kind=image&q=36-year-old%20woman%2C%20lawyer%20at%20an%20insurance%20company%2C%20professional%2C%20composed
+    role: Juristin
+    age: 36
+    gender: weiblich
+    profession: Juristin in einer Versicherung
+    demographics: 36, Frankfurt am Main, verheiratet, ein Kind
+    profile: Aufgewachsen in Offenbach, die Eltern kamen aus der Türkei. Legt Wert auf Ordnung, Sicherheit und gute Schulen.
+    attributes:
+      Grundhaltung: abwägend, bürgerlich, sicherheitsorientiert
+      Politische Orientierung: konservativ, Mitte-rechts
+    color: "#4a7a2c"
+    ocean:
+      openness: 0.6
+      conscientiousness: 0.85
+      extraversion: 0.5
+      agreeableness: 0.6
+      neuroticism: 0.35
+```
+
+Begrüßung und Vorstellung
+00:00:00.000 --> 00:00:14.400
+<v Maren>Herzlich willkommen! Ich bin Maren und moderiere heute unsere Runde. Es gibt kein Richtig oder Falsch, mich interessiert Ihre ehrliche Meinung. [q_a1] Stellen Sie sich bitte kurz vor – und was beschäftigt Sie politisch gerade am meisten?
+
+🤷 Erstwähler, unentschlossen
+00:00:15.200 --> 00:00:24.400
+<v Jonas Albers>Ich bin Jonas, 19, ich mach eine Ausbildung zum Mechatroniker. Ich wähl zum ersten Mal und hab ehrlich gesagt noch keine Ahnung, wen.
+
+😤 Pflege am Limit
+00:00:25.200 --> 00:00:35.200
+<v Lea Okafor>Lea, ich bin Pflegekraft auf der Intensivstation. Mich beschäftigt, dass wir dauernd am Limit arbeiten – und dass beim Klima seit Jahren zu wenig passiert.
+
+😠 Bürokratie bremst
+00:00:36.000 --> 00:00:46.400
+<v Markus Brandl>Markus Brandl, Elektromeister mit eigenem Betrieb. Mich beschäftigt die Bürokratie. Ich verbringe mehr Zeit mit Formularen als auf der Baustelle, und Leute finde ich auch keine.
+
+😞 Preise und Frust
+00:00:47.200 --> 00:00:58.000
+<v Petra Lindner>Petra, ich steh im Laden an der Kasse. Ich seh jeden Tag, was die Leute sich nicht mehr leisten können. Und gefragt wird unsereins ja sowieso nie.
+
+🤔 Rente und Zweifel
+00:00:58.800 --> 00:01:10.800
+<v Hans-Werner Kühn>Hans-Werner, 71, früher Schlosser und Betriebsrat. Mich treibt die Rente um – weniger für mich als für die Jungen. Und ich frag mich, ob meine Partei noch meine Partei ist.
+
+🙂 Sicherheit und Schule
+00:01:11.600 --> 00:01:20.400
+<v Selin Yıldız>Selin, Juristin, Mutter einer Tochter in der zweiten Klasse. Für mich geht es um Sicherheit und darum, dass die Schulen endlich funktionieren.
+
+Wahlentscheidende Frage
+00:01:21.200 --> 00:01:28.400
+<v Maren>Da kommt schon viel zusammen. [q_b1] Wenn Sie eine einzige Frage nennen müssten: Welche entscheidet für Sie diese Wahl?
+
+😟 Bezahlbares Wohnen
+00:01:29.200 --> 00:01:36.000
+<v Jonas Albers>Wohnen. Ich will irgendwann ausziehen, aber in Rostock kriegst du als Azubi nichts, was du bezahlen kannst.
+
+😐 Lebenshaltungskosten
+00:01:36.800 --> 00:01:45.200
+<v Petra Lindner>Die Preise. Strom, Lebensmittel, alles. Da kann mir einer noch so viel von Zukunft erzählen, wenn am Monatsende nichts übrig ist.
+
+🌍 Klima ist Kernfrage
+00:01:46.000 --> 00:01:55.200
+<v Lea Okafor>Für mich ist es das Klima. Wenn wir das weiter verschleppen, wird es später für alle teurer – auch bei den Preisen, Petra.
+
+🙄 Erst die Wirtschaft
+00:01:56.000 --> 00:02:04.800
+<v Markus Brandl>Und wer soll das bezahlen? Ohne eine Wirtschaft, die läuft, gibt’s weder Klimaschutz noch Renten. Erst mal muss sich Arbeit wieder lohnen.
+
+😌 Rente sichern
+00:02:05.600 --> 00:02:13.200
+<v Hans-Werner Kühn>Bei mir ist es die Rente. Wer vierzig Jahre geschafft hat, darf im Alter nicht zum Amt gehen müssen.
+
+🧐 Sicherheit und Ordnung
+00:02:14.000 --> 00:02:24.400
+<v Selin Yıldız>Für mich ist es Sicherheit, auch Ordnung bei der Migration. Ich sag das als Tochter von Einwanderern: Regeln müssen für alle gelten, sonst kippt die Stimmung.
+
+Vertrauen in Lösungen
+00:02:25.200 --> 00:02:30.400
+<v Maren>[q_b2] Und wem trauen Sie zu, das zu lösen? Woran machen Sie das fest?
+
+🤨 Taten statt Worte
+00:02:31.200 --> 00:02:36.800
+<v Markus Brandl>Ich glaube nur noch, was schon mal umgesetzt wurde. Ankündigungen hab ich genug gehört.
+
+😒 Traut niemandem
+00:02:37.600 --> 00:02:43.600
+<v Petra Lindner>Ich trau ehrlich gesagt keinem. Vor der Wahl versprechen sie alles, danach ist es vergessen.
+
+🙂 Gesichter vor Ort
+00:02:44.400 --> 00:02:53.200
+<v Hans-Werner Kühn>Ich schau auf die Leute vor Ort. Unser Abgeordneter war bei uns im Betrieb, als es eng wurde. Das vergisst man nicht.
+
+🤔 Konkrete Pläne zählen
+00:02:54.000 --> 00:03:01.200
+<v Selin Yıldız>Ich lese die Programme quer. Wer konkret sagt, wie etwas bezahlt werden soll, bekommt von mir mehr Vertrauen.
+
+😕 Kein Maßstab
+00:03:02.000 --> 00:03:10.400
+<v Jonas Albers>Ich merk gerade, ich hab gar keinen Maßstab. Ich kenn die meisten nur aus Clips, und da schreien sich alle an.
+
+😊 Haltung über Jahre
+00:03:11.200 --> 00:03:17.600
+<v Lea Okafor>Mir ist wichtig, ob jemand über Jahre dieselbe Haltung hat – und nicht nur im Wahlkampf.
+
+SPD-Plakat
+00:03:18.400 --> 00:03:28.400
+<v Maren>Dann schauen wir uns jetzt echte Wahlplakate an, aus verschiedenen Wahlkämpfen der letzten Jahre. [q_c1] Hier das erste, von der SPD. Was ist Ihr spontaner Eindruck?
+
+🙂 Klare Kante
+00:03:29.200 --> 00:03:38.400
+<v Hans-Werner Kühn>„Die Frau gegen Blau“ – da weiß man, dass die AfD gemeint ist. Mir gefällt, dass da eine Person sichtbar für etwas einsteht.
+
+😒 Nur dagegen
+00:03:39.200 --> 00:03:46.400
+<v Petra Lindner>Und was will sie? Da steht nur, wogegen sie ist. Über die Preise sagt mir das gar nichts.
+
+🤔 Wer ist das?
+00:03:47.200 --> 00:03:54.400
+<v Jonas Albers>Optisch stark: großes Gesicht, drei Wörter. Aber wer das ist, steht da gar nicht. Muss man das wissen?
+
+Linke-Plakat
+00:03:55.200 --> 00:03:57.600
+<v Maren>Das nächste ist von der Linken.
+
+😊 Wirkt nahbar
+00:03:58.400 --> 00:04:05.600
+<v Lea Okafor>„Wir kümmern uns um alle Familien“ – das spricht mich an. Und sie wirkt nahbar, nicht so gestylt.
+
+🤨 Wer zahlt?
+00:04:06.400 --> 00:04:13.200
+<v Markus Brandl>Kümmern klingt nett. Bezahlen müssen es dann die, die arbeiten. Wie das gehen soll, steht da nicht.
+
+🧐 Zu allgemein
+00:04:14.000 --> 00:04:21.600
+<v Selin Yıldız>Familie ist mein Thema. Aber „alle Familien“ ist so weit gefasst, dass ich nicht weiß, was konkret gemeint ist.
+
+CDU-Plakat
+00:04:22.400 --> 00:04:24.400
+<v Maren>Jetzt die CDU.
+
+👍 Spricht ihn an
+00:04:25.200 --> 00:04:30.800
+<v Markus Brandl>„Fleiß muss sich wieder lohnen.“ Das könnte ich gesagt haben. Klar und ohne Schnickschnack.
+
+😕 Stört das „wieder“
+00:04:31.600 --> 00:04:38.000
+<v Lea Okafor>Und Pflegekräfte sind nicht fleißig? Mich stört das „wieder“ – als würden wir uns nicht anstrengen.
+
+🙂 Seriös und klar
+00:04:38.800 --> 00:04:44.400
+<v Selin Yıldız>Aufgeräumt und seriös. Das spricht mich an, auch wenn mir eine konkrete Zahl fehlt.
+
+🤷 Nur Text
+00:04:45.200 --> 00:04:50.400
+<v Jonas Albers>Kein Mensch drauf, nur Text. Auf dem Handy würde ich da einfach weiterscrollen.
+
+AfD-Plakat
+00:04:51.200 --> 00:04:59.200
+<v Maren>Das nächste ist ein älteres Plakat der AfD. Jemand hat etwas draufgeschrieben – bitte achten Sie auf das Plakat selbst.
+
+😠 Fühlt sich ausgeladen
+00:05:00.000 --> 00:05:08.000
+<v Selin Yıldız>„Neue Deutsche? Machen wir selber.“ Als Tochter von Einwanderern fühl ich mich da ausgeladen. Ich bin auch eine neue Deutsche.
+
+🤔 Versteht den Reiz
+00:05:08.800 --> 00:05:18.000
+<v Petra Lindner>Provokant ist es. Ich versteh, warum das manche anspricht – die fühlen sich sonst nirgends gemeint. Wählen würd ich deswegen noch lange nicht.
+
+😟 Zu viel Krawall
+00:05:18.800 --> 00:05:26.800
+<v Hans-Werner Kühn>Das ist mir zu sehr auf Krawall gebürstet. Bei uns im Betrieb haben Deutsche und Türken dreißig Jahre zusammen geschafft.
+
+😮 Bleibt hängen
+00:05:27.600 --> 00:05:35.200
+<v Jonas Albers>Auffällig ist es, das muss man sagen. Es bleibt hängen. Ob das was Gutes ist, ist eine andere Frage.
+
+Grünen-Plakat
+00:05:36.000 --> 00:05:39.600
+<v Maren>Und zuletzt die Grünen, ein Plakat aus der Europawahl.
+
+😊 Positiv statt dagegen
+00:05:40.400 --> 00:05:47.600
+<v Lea Okafor>Das mag ich: zwei Frauen, die Europafahne, „Werte verteidigen. Frieden schützen.“ Das ist für etwas, nicht gegen jemanden.
+
+🙄 Was zählt denn?
+00:05:48.400 --> 00:05:55.600
+<v Markus Brandl>Schönes Foto, aber „Machen, was zählt“ – was zählt denn? Über meinen Betrieb sagt mir das gar nichts.
+
+😐 Wie Reisewerbung
+00:05:56.400 --> 00:06:00.000
+<v Petra Lindner>Sonnenuntergang und Fahne. Sieht aus wie Werbung fürs Reisebüro.
+
+Plakate im Vergleich
+00:06:00.800 --> 00:06:05.600
+<v Maren>[q_c2] Wenn Sie die fünf jetzt nebeneinander denken: Wie wirken sie im Vergleich?
+
+🤔 Gesichter bleiben
+00:06:06.400 --> 00:06:12.000
+<v Jonas Albers>Die mit einem Gesicht bleiben eher hängen. Die mit nur Text vergesse ich schneller.
+
+🙂 Person schafft Vertrauen
+00:06:12.800 --> 00:06:19.600
+<v Hans-Werner Kühn>Die mit einer echten Person wirken ehrlicher. Bei Text allein weiß ich nicht, wer mir das verspricht.
+
+🧐 Kein Plan zu sehen
+00:06:20.400 --> 00:06:27.200
+<v Selin Yıldız>Keins nennt eine Zahl oder einen Plan. Das CDU-Plakat ist am klarsten, das der Linken am menschlichsten.
+
+😏 Alles Werbung
+00:06:28.000 --> 00:06:36.000
+<v Petra Lindner>Für mich klingen alle gleich: Werbung. Nur das AfD-Plakat traut sich was – und das meine ich nicht als Lob.
+
+🤨 Nicht neutral
+00:06:36.800 --> 00:06:43.200
+<v Lea Okafor>Das AfD-Plakat finde ich ausgrenzend, das grüne am hoffnungsvollsten. Aber da bin ich auch nicht neutral.
+
+🙂 Klar vor schön
+00:06:44.000 --> 00:06:50.800
+<v Markus Brandl>Mir ist das klarste lieber als das schönste. CDU vorne, der Rest ist mir zu viel Gefühl.
+
+Glaubwürdigkeit von Plakaten
+00:06:51.600 --> 00:06:54.400
+<v Maren>[q_c3] Was macht ein Wahlplakat für Sie glaubwürdig?
+
+🧐 Messbare Aussage
+00:06:55.200 --> 00:07:00.800
+<v Selin Yıldız>Eine konkrete Aussage, an der man die Partei später messen kann. Kein „Zukunft gestalten“.
+
+😊 Echte Menschen
+00:07:01.600 --> 00:07:07.600
+<v Lea Okafor>Echte Menschen statt Hochglanz. Eine Pflegekraft auf dem Plakat glaube ich eher als einen Slogan.
+
+😏 Gar nichts
+00:07:08.400 --> 00:07:13.600
+<v Petra Lindner>Gar nichts. Ein Plakat ist Werbung. Glaubwürdig ist, was nach der Wahl passiert.
+
+🙂 Bekanntes Gesicht
+00:07:14.400 --> 00:07:21.200
+<v Hans-Werner Kühn>Wenn ich das Gesicht von hier kenne. Dann weiß ich, wen ich anrufen kann, wenn was schiefläuft.
+
+🤨 Kurz und ehrlich
+00:07:22.000 --> 00:07:26.800
+<v Markus Brandl>Kurz und ohne Übertreibung. Sobald es nach Geschenken klingt, bin ich raus.
+
+🤔 Mehr als ein Spruch
+00:07:27.600 --> 00:07:32.400
+<v Jonas Albers>Wenn ich’s danach online wiederfinde und da mehr dahintersteckt als ein Spruch.
+
+Einfluss auf die Wahl
+00:07:33.200 --> 00:07:37.200
+<v Maren>[q_d1] Zum Schluss: Hat ein Plakat schon einmal Ihre Wahlentscheidung beeinflusst?
+
+🙃 Vielleicht diesmal
+00:07:38.000 --> 00:07:46.000
+<v Jonas Albers>Bei mir vielleicht diesmal. Ich weiß ja noch nichts – da bleibt so was eher hängen, als mir lieb ist.
+
+😌 Nur ans Wählen erinnert
+00:07:46.800 --> 00:07:50.000
+<v Hans-Werner Kühn>Nein. Aber es erinnert mich daran, überhaupt hinzugehen.
+
+🤔 Vielleicht doch wählen
+00:07:50.800 --> 00:07:57.600
+<v Petra Lindner>Beeinflusst nicht. Aber heute hab ich gemerkt, dass ich mich mehr ärgere, wenn ich gar nicht wähle.
+
+🙂 Anstoß zum Nachlesen
+00:07:58.400 --> 00:08:04.000
+<v Lea Okafor>Als Anstoß, mal nachzulesen. Entschieden hab ich mich aber noch nie wegen eines Plakats.
+
+😐 Nie
+00:08:04.800 --> 00:08:10.000
+<v Markus Brandl>Nie. Ich entscheide nach dem, was über die Pläne in der Zeitung steht.
+
+🧐 Abgeschreckt schon
+00:08:10.800 --> 00:08:16.400
+<v Selin Yıldız>Abgeschreckt hat mich schon mal eins – zu aggressiv. Überzeugt hat mich noch keins.
+
+Dank und Abschluss
+00:08:17.200 --> 00:08:23.600
+<v Maren>Vielen Dank Ihnen allen – das war eine sehr offene Runde, und genau das hilft uns.
