@@ -14,7 +14,8 @@ import { LEANSCOPE_CONFIG } from '../../leanscope/leanscope.config';
 import { LeanScopeSessionService } from '../../leanscope/leanscope-session.service';
 import { SupportWidget } from '../../leanscope/ui/support-widget';
 import { APP_ENV } from '../app-env';
-import { chaptersOf, inventoryAnswers, nextChapter, type Chapter } from './chapters';
+import { HOST_SLOT_KEYS } from '../discussion/model/slots';
+import { guideChoreos, inventoryAnswers, nextChoreo } from './chapters';
 
 /** Makes the guide's session; a test provides its own. */
 export const GUIDE_SESSION_FACTORY = new InjectionToken<() => LeanScopeSessionService>(
@@ -31,15 +32,31 @@ export const GUIDE_SESSION_FACTORY = new InjectionToken<() => LeanScopeSessionSe
 
 /** How many frames an anchor's element may take to render before the widget stays at home. */
 const ANCHOR_FRAMES = 30;
+/** Where the last session is remembered, per repository: ids only, never a token. */
+const REMEMBERED_KEY = 'leanscope-guide-session';
+
+/** The guide's last session in this browser: which choreo it ran, and its own scenario. */
+interface RememberedSession {
+  choreoScenarioGuid: string;
+  sessionScenarioGuid: string;
+  /** What the choreos before it were told, by field key (persona guids, file refs). */
+  carried?: Record<string, unknown[]>;
+  /** The names of the files handed over so far, by the place they were given at. */
+  files?: Record<string, string[]>;
+}
 
 /**
  * The guide: the persona (e.g. "Thomas") who leads the user through the whole process in the
  * agent server's support widget.
  *
- * It owns one session and runs the chapters (see `chapters.ts`) in it, one choreo after the
- * other: when a chapter's choreo reaches its authored end, the next one starts and the widget
- * follows. The chapters share one 🍱 Inventory in the repository, so what one remembered is there
- * for the next; the guide reads it from the session's `inventory` frames.
+ * It owns one session and runs the guide's choreos (see `chapters.ts`) in it, one after the
+ * other: when a choreo reaches its authored end, the next one starts and the widget follows. The
+ * choreos share one 🍱 Inventory in the repository, so what one remembered is there for the next;
+ * the guide reads it from the session's `inventory` frames.
+ *
+ * It rejoins rather than restarts: the last session's scenario is remembered in this browser, and
+ * `start()` asks the agent server for that session again (a running one is joined at once, a
+ * stored one resumed). `restart()` begins anew on purpose.
  *
  * The widget is the guide's voice. It sits at its home position (where the widget puts itself)
  * unless a page anchors it next to the place where the current question is answered.
@@ -48,13 +65,12 @@ const ANCHOR_FRAMES = 30;
 export class GuideService {
   private readonly document = inject(DOCUMENT);
   private readonly widget = inject(SupportWidget);
+  private readonly config = inject(LEANSCOPE_CONFIG);
   readonly session = inject(GUIDE_SESSION_FACTORY)();
-  readonly chapters: readonly Chapter[] = chaptersOf(
-    inject(LEANSCOPE_CONFIG).choreoScenarioGuid,
-    inject(APP_ENV),
-  );
+  /** The choreos of the guided process, in order. */
+  readonly choreos: readonly string[] = guideChoreos(this.config.choreoScenarioGuid, inject(APP_ENV));
 
-  private readonly _chapter = signal<Chapter | null>(null);
+  private readonly _choreo = signal<string | null>(null);
   private readonly _inventory = signal<InventoryRow[]>([]);
   /** The theme the app was opened with, for the widget. */
   private readonly theme = signal<{ theme?: string | null; themeMode?: string | null }>({});
@@ -62,12 +78,33 @@ export class GuideService {
   private readonly _suppressed = signal(false);
   private anchorFrame = 0;
 
-  /** The chapter the session runs; null without a session, or for one that is no chapter. */
-  readonly chapter = this._chapter.asReadonly();
-  /** What the chapters' shared Inventory remembers, as the session last reported it. */
+  /** The choreo the session runs; null without a session, or for one that is none of the guide's. */
+  readonly choreo = this._choreo.asReadonly();
+  /** What the choreos' shared Inventory remembers, as the session last reported it. */
   readonly inventory = this._inventory.asReadonly();
-  /** The remembered answers by field key (see `inventoryAnswers`). */
-  readonly answers = computed(() => inventoryAnswers(this._inventory()));
+  /** What the choreos before the running one were told, by field key (see `answers`). */
+  private readonly carried = signal<Record<string, unknown[]>>({});
+  /**
+   * The answers by field key (see `inventoryAnswers`): what the running session reports, on top
+   * of what the choreos before it were told. The Inventory only keeps the slots it declares, so
+   * without this a later choreo would not know the cast an earlier one was given.
+   */
+  readonly answers = computed(() => ({ ...this.carried(), ...inventoryAnswers(this._inventory()) }));
+  private readonly _files = signal<Record<string, string[]>>({});
+  /**
+   * The names of the files handed to the guide so far, by the place they were given at. Kept
+   * with the remembered session, so a reload still shows what was handed over (the names only:
+   * the files themselves are with the session).
+   */
+  readonly files = this._files.asReadonly();
+  /**
+   * The running choreo comes after the first: what the first one asked for (the data basis) is
+   * settled and can no longer be given or changed.
+   */
+  readonly pastFirst = computed(() => {
+    const choreo = this._choreo();
+    return choreo !== null && choreo !== this.choreos[0];
+  });
 
   constructor() {
     this.session.onFrame((frame) => {
@@ -75,13 +112,30 @@ export class GuideService {
       const rows = (frame.data as InventoryFrame | null)?.rows;
       this._inventory.set(Array.isArray(rows) ? rows : []);
     });
-    // A chapter that reached its authored end hands over to the next one. Any other end (an
+    // A choreo that reached its authored end hands over to the next one. Any other end (an
     // error, a stop, a choreo that changed) leaves the guide where it is.
     effect(() => {
       if (this.session.state() !== 'ended' || this.session.endReason() !== 'terminal') return;
       untracked(() => {
-        const next = nextChapter(this.chapters, this._chapter());
-        if (next) void this.run(next);
+        const next = nextChoreo(this.choreos, this._choreo());
+        if (!next) return;
+        // What this choreo was told goes along to the next one.
+        this.carried.set(this.answers());
+        this._inventory.set([]);
+        void this.run(next);
+      });
+    });
+    // What the guide asks, for whoever looks into the console: which fields a question names
+    // decides whether the app has a place for it (see `slots.ts`) or the widget shows its form.
+    effect(() => {
+      const question = this.session.pendingQuestion();
+      if (!question) return;
+      console.info('[guide] asks', {
+        choreo: this._choreo(),
+        fieldKeys: question.fieldKeys,
+        required: question.required,
+        properties: Object.keys(question.schema?.properties ?? {}),
+        facetGuid: question.facetGuid,
       });
     });
     effect(() => {
@@ -93,41 +147,79 @@ export class GuideService {
       this.widget.show(session.sessionToken, {
         theme: theme ?? fromUi.get('theme'),
         themeMode: themeMode ?? fromUi.get('themeMode'),
-        hostSlots: this._chapter()?.hostSlots ?? [],
+        hostSlots: HOST_SLOT_KEYS,
       });
     });
   }
 
-  /** Starts the process at its first chapter. */
-  start(): Promise<void> {
-    const first = this.chapters[0];
-    if (first) return this.run(first);
-    // Nothing configured: the session says what is missing.
-    this._chapter.set(null);
-    return this.session.start();
+  /**
+   * Goes on where this browser left off: rejoins the remembered session of the choreo it ran.
+   * Without one (or when it can't be had any more), starts the process at its first choreo.
+   */
+  async start(): Promise<void> {
+    const first = this.choreos[0];
+    if (!first) {
+      // Nothing configured: the session says what is missing.
+      this._choreo.set(null);
+      return this.session.start();
+    }
+    const remembered = this.remembered();
+    if (remembered && this.choreos.includes(remembered.choreoScenarioGuid)) {
+      this.carried.set(remembered.carried ?? {});
+      this._files.set(remembered.files ?? {});
+      await this.run(remembered.choreoScenarioGuid, remembered.sessionScenarioGuid);
+      if (this.session.state() !== 'error') return;
+      // That session is gone for good: begin anew.
+      this.forget();
+      this.carried.set({});
+      this._files.set({});
+    }
+    await this.run(first);
+  }
+
+  /** Begins the process anew, at its first choreo, whatever was remembered. */
+  restart(): Promise<void> {
+    this.forget();
+    this._inventory.set([]);
+    this.carried.set({});
+    this._files.set({});
+    return this.start();
   }
 
   /**
    * Follows a session LeanScope started (`?sessionToken=`) and opens its start gate. When it runs
-   * one of the chapters' choreos, the guide goes on from there.
+   * one of the guide's choreos, the guide goes on from there.
    */
   async attach(sessionToken: string): Promise<void> {
-    this._chapter.set(null);
+    this._choreo.set(null);
     this._inventory.set([]);
     if (!(await this.session.attach(sessionToken))) return;
     const choreo = (await this.session.sessionConfig())?.choreoScenarioGuid;
     if (this.session.session()?.sessionToken === sessionToken.trim()) {
-      this._chapter.set(this.chapters.find((c) => c.choreoGuid === choreo) ?? null);
+      this._choreo.set(choreo && this.choreos.includes(choreo) ? choreo : null);
     }
     await this.session.begin();
   }
 
-  /** Ends following the session and takes the widget away. */
+  /**
+   * Ends following the session and takes the widget away. The session stays remembered: the next
+   * `start()` rejoins it.
+   */
   stop(): void {
-    this._chapter.set(null);
+    this._choreo.set(null);
     this._inventory.set([]);
     this.anchor(null);
     this.session.stop();
+  }
+
+  /** Files were handed over at a place (`names`), or taken away again (`null`). */
+  noteFiles(place: string, names: string[] | null): void {
+    this._files.update((files) => {
+      const { [place]: _gone, ...rest } = files;
+      return names?.length ? { ...rest, [place]: names } : rest;
+    });
+    const remembered = this.remembered();
+    if (remembered) this.remember({ ...remembered, files: this._files() });
   }
 
   /** The theme LeanScope opened the app with (`?theme=`, `?themeMode=`). */
@@ -159,9 +251,60 @@ export class GuideService {
     find();
   }
 
-  private run(chapter: Chapter): Promise<void> {
-    this._chapter.set(chapter);
-    return this.session.start({ choreoScenarioGuid: chapter.choreoGuid });
+  /** Runs a choreo: as the session with this scenario when given (rejoin), else as a new one. */
+  private async run(choreo: string, sessionScenarioGuid?: string): Promise<void> {
+    this._choreo.set(choreo);
+    await this.session.start({
+      choreoScenarioGuid: choreo,
+      ...(sessionScenarioGuid ? { sessionScenarioGuid } : {}),
+    });
+    const own = this.session.session()?.sessionScenarioGuid;
+    // Only while this is still the choreo being run: a hand-over may have come in between.
+    if (own && this._choreo() === choreo) {
+      this.remember({
+        choreoScenarioGuid: choreo,
+        sessionScenarioGuid: own,
+        carried: this.carried(),
+        files: this._files(),
+      });
+    }
+  }
+
+  private get storageKey(): string {
+    return `${REMEMBERED_KEY}:${this.config.repositoryId.trim()}`;
+  }
+
+  private remembered(): RememberedSession | null {
+    try {
+      const stored = this.document.defaultView?.localStorage.getItem(this.storageKey);
+      const value = stored ? (JSON.parse(stored) as Partial<RememberedSession>) : null;
+      return value?.choreoScenarioGuid && value.sessionScenarioGuid
+        ? {
+            choreoScenarioGuid: value.choreoScenarioGuid,
+            sessionScenarioGuid: value.sessionScenarioGuid,
+            carried: value.carried && typeof value.carried === 'object' ? value.carried : {},
+            files: value.files && typeof value.files === 'object' ? value.files : {},
+          }
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private remember(session: RememberedSession): void {
+    try {
+      this.document.defaultView?.localStorage.setItem(this.storageKey, JSON.stringify(session));
+    } catch {
+      // Private mode or blocked storage: the next visit then starts anew.
+    }
+  }
+
+  private forget(): void {
+    try {
+      this.document.defaultView?.localStorage.removeItem(this.storageKey);
+    } catch {
+      // Nothing was remembered.
+    }
   }
 }
 

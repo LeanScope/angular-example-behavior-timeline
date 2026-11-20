@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import type {
   ActorRef,
   ActorsFrame,
+  BranchFrame,
   EndReason,
   GateFrame,
   HistoryResponse,
@@ -15,6 +16,7 @@ import type {
   SpeakResult,
   SseFrame,
   Step,
+  UndoState,
 } from './agent-server.types';
 import { LEANSCOPE_CONFIG, LEANSCOPE_FETCH, missingConfig } from './leanscope.config';
 import { LeanScopeAuthService } from './leanscope-auth.service';
@@ -48,6 +50,7 @@ export type SessionState =
  *   continue() → POST …/continue: releases a transition a choreo without autoTransition parked
  *   speak()    → POST …/speak: a step of a recorded conversation, spoken in its persona's voice
  *   cancelSpeech() → DELETE …/speak: supersedes everything speak() asked for
+ *   undo() / redo() → POST …/undo, …/redo: takes the last turn back, or restores it
  *   sessionConfig() → GET …/config: which choreo the session runs (e.g. one it was attached to)
  *   runQuery() → POST /api/v1/queries/<guid>, a query an author published in LeanScope
  *
@@ -67,6 +70,9 @@ export class LeanScopeSessionService {
   private readonly _endReason = signal<EndReason | null>(null);
   private readonly _uploads = signal<Record<string, UploadState>>({});
   private readonly _actors = signal<ActorRef[]>([]);
+  private readonly _undoState = signal<UndoState>({ canUndo: false, canRedo: false });
+  /** Every step this session has shown, also those an undo took off the conversation. */
+  private readonly known = new Map<string, Step>();
   private readonly pending = new PendingUploads(this.fetch, (state) =>
     this._uploads.update((all) => ({ ...all, [state.ref]: state })),
   );
@@ -84,6 +90,8 @@ export class LeanScopeSessionService {
    * name their speaker by guid only; this is how to show a name and a face for it.
    */
   readonly actors = this._actors.asReadonly();
+  /** Whether the last turn can be taken back (`undo()`), or a taken-back one restored (`redo()`). */
+  readonly undoState = this._undoState.asReadonly();
   /** File answers of this session by `pending://` ref: parked, uploading, done or failed. */
   readonly uploads = computed(() => Object.values(this._uploads()));
   readonly isActive = computed(() =>
@@ -247,6 +255,22 @@ export class LeanScopeSessionService {
     return !!res?.ok;
   }
 
+  /**
+   * Takes the last turn back (`POST …/undo`): the last answered question and everything after
+   * it. The question is asked again; `steps` follows the `branch` frame. Only works while the
+   * session waits (not while the agents are at it).
+   */
+  async undo(): Promise<boolean> {
+    const res = await this.call('/undo', { method: 'POST' });
+    return !!res?.ok;
+  }
+
+  /** Restores the turn `undo()` took back last (`POST …/redo`). */
+  async redo(): Promise<boolean> {
+    const res = await this.call('/redo', { method: 'POST' });
+    return !!res?.ok;
+  }
+
   /** Which choreo the session runs and where it records (`GET …/config`); null when unknown. */
   async sessionConfig(): Promise<SessionConfig | null> {
     const res = await this.call('/config');
@@ -330,6 +354,8 @@ export class LeanScopeSessionService {
     this._endReason.set(null);
     this._uploads.set({});
     this._actors.set([]);
+    this._undoState.set({ canUndo: false, canRedo: false });
+    this.known.clear();
     this.pending.clear();
   }
 
@@ -403,6 +429,14 @@ export class LeanScopeSessionService {
         if (Array.isArray(actors)) this._actors.set(actors.filter((a) => a?.guid && a.name));
         break;
       }
+      case 'undo_state': {
+        const { canUndo, canRedo } = (frame.data ?? {}) as Partial<UndoState>;
+        this._undoState.set({ canUndo: !!canUndo, canRedo: !!canRedo });
+        break;
+      }
+      case 'branch':
+        this.followBranch(frame.data as BranchFrame);
+        break;
       case 'session_ending': {
         const { reason, error } = frame.data as SessionEndingFrame;
         if (error?.message) this._error.set(error.message);
@@ -417,8 +451,29 @@ export class LeanScopeSessionService {
     }
   }
 
+  /**
+   * An undo or redo changed which steps make up the conversation: `steps` becomes the frame's
+   * active chain. A step this client never saw is read from the history.
+   */
+  private followBranch(frame: BranchFrame | null): void {
+    const chain = frame?.activeChain;
+    if (!frame || !Array.isArray(chain)) return;
+    this._undoState.set({ canUndo: !!frame.canUndo, canRedo: !!frame.canRedo });
+    const steps = chain.map((guid) => this.known.get(guid));
+    if (steps.every((step): step is Step => !!step)) {
+      this._steps.set(steps);
+    } else {
+      this._steps.set([]);
+      void this.loadHistory(this.run);
+    }
+    this._pendingQuestion.set(null);
+    void this.refreshPending();
+  }
+
   /** Step frames carry the step's full current state, so a frame replaces the step with its guid. */
   private upsertStep(step: Step): void {
+    if (step.action === 'DELETE') this.known.delete(step.guid);
+    else this.known.set(step.guid, step);
     this._steps.update((steps) => {
       const index = steps.findIndex((s) => s.guid === step.guid);
       if (step.action === 'DELETE')

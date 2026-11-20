@@ -68,6 +68,8 @@ function fakeServer() {
     if (url === `${CONTROLLER}/steps/pending`) return json(pending);
     if (method === 'POST' && url === `${CONTROLLER}/submit`)
       return new Response(null, { status: 204 });
+    if (method === 'POST' && (url === `${CONTROLLER}/undo` || url === `${CONTROLLER}/redo`))
+      return new Response(null, { status: 204 });
     if (method === 'POST' && url === `${CONTROLLER}/speak`) {
       const { stepGuid, requestId } = JSON.parse(String(init?.body)) as { stepGuid: string; requestId?: string };
       if (stepGuid === 'silent') return json({ error: { code: 'voiceless', message: 'no voice' } }, 422);
@@ -320,5 +322,26 @@ describe('LeanScopeSessionService', () => {
   it('cannot speak without a session', async () => {
     const { service } = setup();
     expect(await service.speak('s1')).toEqual({ ok: false, status: 0 });
+  });
+
+  it('takes the last turn back and follows the conversation the server names', async () => {
+    const { server, service } = setup();
+    await service.start();
+    server.emit('step', step('b', '{"brief":"x"}', 'human'));
+    server.emit('step', step('c', 'Thanks!'));
+    server.emit('undo_state', { canUndo: true, canRedo: false });
+    await vi.waitFor(() => expect(service.undoState()).toEqual({ canUndo: true, canRedo: false }));
+    expect(service.steps().map((s) => s.guid)).toEqual(['a', 'b', 'c']);
+
+    expect(await service.undo()).toBe(true);
+    expect(server.calls.some((c) => c.method === 'POST' && c.url === `${CONTROLLER}/undo`)).toBe(true);
+    server.emit('branch', { op: 'detach', branchHead: 'b', members: ['b', 'c'], activeChain: ['a'], canUndo: false, canRedo: true });
+    await vi.waitFor(() => expect(service.steps().map((s) => s.guid)).toEqual(['a']));
+    expect(service.undoState()).toEqual({ canUndo: false, canRedo: true });
+
+    // Redo: the steps come back without being sent again.
+    expect(await service.redo()).toBe(true);
+    server.emit('branch', { op: 'attach', branchHead: 'b', members: ['b', 'c'], activeChain: ['a', 'b', 'c'], canUndo: true, canRedo: false });
+    await vi.waitFor(() => expect(service.steps().map((s) => s.guid)).toEqual(['a', 'b', 'c']));
   });
 });

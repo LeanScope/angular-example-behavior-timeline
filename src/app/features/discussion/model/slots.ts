@@ -43,6 +43,12 @@ const SLOTS: Record<string, SlotPlace> = {
 };
 
 /**
+ * The slots answered in a place of the app, as the support widget is told (`hostSlots`): for a
+ * question that asks for exactly one of them it points to the app instead of showing its form.
+ */
+export const HOST_SLOT_KEYS: readonly string[] = Object.keys(SLOTS);
+
+/**
  * The place of a form with these keys, or null: a single-field form by its key, and the director's
  * form (speaker, instruction, …) by its instruction field, whatever else it asks for.
  */
@@ -143,17 +149,41 @@ export interface SlotCast {
   answered: Record<CastRole, boolean>;
 }
 
-const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
- * Every guid in an answer value, in order (strings, arrays and entity-ref objects). A string may
- * hold the guid as JSON (the Inventory stores `"\"<guid>\""`), so guids are found inside it.
+ * Every guid in an answer value, in order (strings, arrays and entity-ref objects). Only a string
+ * that IS a guid counts: a portrait URL beside a persona's guid contains one too, and is not a
+ * persona. The Inventory stores a value as JSON (`"\"<guid>\""`), so such a string is read as JSON.
  */
 function guidsIn(value: unknown): string[] {
-  if (typeof value === 'string') return value.match(UUID) ?? [];
+  if (typeof value === 'string') {
+    const text = value.trim();
+    if (UUID.test(text)) return [text];
+    if (/^["[{]/.test(text)) {
+      try {
+        return guidsIn(JSON.parse(text));
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  }
   if (Array.isArray(value)) return value.flatMap(guidsIn);
   if (value && typeof value === 'object') return Object.values(value).flatMap(guidsIn);
   return [];
+}
+
+/**
+ * What an answered step's line holds as the answer. The session rewrites the line as a review
+ * (`{ kind: 'review', schema, data }`): only its `data` is the answer. Its `schema` lists every
+ * persona that was on offer, which must not be mistaken for the picks.
+ */
+function answeredData(line: Record<string, unknown>): Record<string, unknown> {
+  const data = line['data'];
+  return line['kind'] === 'review' && data && typeof data === 'object' && !Array.isArray(data)
+    ? (data as Record<string, unknown>)
+    : line;
 }
 
 /**
@@ -172,7 +202,7 @@ export function castFromSlots(steps: Step[]): SlotCast {
     let answer: Record<string, unknown> | null = null;
     if (!step.pending && line.startsWith('{')) {
       try {
-        answer = JSON.parse(line) as Record<string, unknown>;
+        answer = answeredData(JSON.parse(line) as Record<string, unknown>);
       } catch {
         answer = null;
       }

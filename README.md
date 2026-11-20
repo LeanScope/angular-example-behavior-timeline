@@ -127,12 +127,21 @@ opened the app with (`?theme=`), and while the session asks for an input, the mi
 sits next to the place where it is answered. While the guide only explains, it sits at its home
 position.
 
-The guide leads through the process in chapters (`src/app/features/guide/`): each chapter is a
-choreo, run as a session of its own, and when one reaches its authored end the next one starts
-and the widget follows. The first chapter is `LEANSCOPE_CHOREO_SCENARIO_GUID` (the data basis:
-documents, moderator, participants); the second is `APP_DIRECTOR_CHOREO_GUID` (one director
-instruction per turn of the discussion; optional). The chapters reference the same 🍱 Inventory,
-so the cast picked in the first is there in the second.
+The guide leads through the process as a row of choreos (`src/app/features/guide/`), each run as
+a session of its own: when one reaches its authored end the next one starts and the widget
+follows. The first is `LEANSCOPE_CHOREO_SCENARIO_GUID` (the data basis: documents, moderator,
+participants); the second is `APP_DIRECTOR_CHOREO_GUID` ("🎬 Thomas zeigt, wie man Regie führt":
+one director instruction per turn of the discussion; optional). The choreos reference the same
+🍱 Inventory, so the cast picked in the first is there in the second.
+
+The guide starts with the app and rejoins rather than restarts: the browser remembers the last
+session's scenario (an id, not a token), and the agent server hands that session back. "Tour starten" in the timeline's ⋮ menu starts over.
+
+An answer given earlier can be taken away again (a file line's ×, or new files dropped on its
+zone): the session is undone back to that question, and what was answered after it goes in again
+by itself. An answer that others rest on (`CLAIMS` between their facets in the repository, e.g.
+the script claims the moderator) is only removed together with them, on an explicit "Auch
+entfernen". This works within one visit: after a reload the earlier files are no longer at hand.
 
 When the session asks for an input the app has a place for, the app goes there and highlights it.
 The input is recognised by its key, the facet's `key` or the override on its relationship (see

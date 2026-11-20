@@ -7,6 +7,8 @@ import { toStudy, type StudyQueryResult } from '../model/study-mapper';
 import { EMPTY_STUDY, type Study, type Stimulus } from '../model/study.model';
 
 const PLACEMENTS_KEY = 'discussion.stimulus-placements';
+/** How long a handed-over stimulus sits on the track until the user places it. */
+const HANDED_SECONDS = 30;
 
 /**
  * The study as LeanScope holds it: read through the published query "Studie der Choreo" and
@@ -21,6 +23,10 @@ export class StudyStore {
   private readonly client = inject(LeanScopeSessionService);
 
   private readonly _study = signal<Study>(EMPTY_STUDY);
+  /** Stimuli handed to the guide's session in this visit (see `showHanded`). */
+  private readonly handed = signal<Stimulus[]>([]);
+  /** Stimuli of the data basis as the repository keeps it (see `showKept`). */
+  private readonly kept = signal<Stimulus[]>([]);
   private readonly _loading = signal(false);
   private readonly _error = signal<string | null>(null);
   private readonly placements = signal<Record<string, { start: number; end: number }>>(
@@ -41,12 +47,43 @@ export class StudyStore {
         ...study.screener,
         participants: study.screener.participants.map((p) => withPortrait(this.agentServerUrl, p)),
       },
-      stimuli: study.stimuli.map((s) => ({ ...s, ...placed[s.guid] })),
+      stimuli: [...study.stimuli, ...(this.handed().length ? this.handed() : this.kept())].map((s) => ({ ...s, ...placed[s.guid] })),
     };
   });
   readonly participants = computed(() => this.study().screener?.participants ?? []);
   readonly guide = computed(() => this.study().guide);
   readonly questions = computed(() => this.guide()?.blocks.flatMap((b) => b.questions) ?? []);
+
+  /**
+   * Shows the stimuli handed to the guide's session, straight from the files (the repository
+   * does not have them as a study yet). An empty list takes them away again.
+   */
+  showHanded(files: readonly File[]): void {
+    if (files.length === 0 && this.handed().length === 0) return;
+    this.handed().forEach((s) => URL.revokeObjectURL(s.url));
+    this.handed.set(
+      files.map((file, i) => ({
+        guid: `handed:${i}:${file.name}`,
+        name: file.name.replace(/\.[^.]+$/, ''),
+        url: URL.createObjectURL(file),
+        mimeType: file.type || 'application/octet-stream',
+        start: i * HANDED_SECONDS,
+        end: (i + 1) * HANDED_SECONDS,
+      })),
+    );
+  }
+
+  /**
+   * Shows the stimuli the repository keeps as the data basis (already read, each with its `url`).
+   * They stand in whenever no file handed over in this visit is at hand, e.g. after a reload.
+   */
+  showKept(stimuli: Stimulus[]): void {
+    const still = new Set(stimuli.map((s) => s.url));
+    this.kept().forEach((s) => {
+      if (!still.has(s.url)) URL.revokeObjectURL(s.url);
+    });
+    this.kept.set(stimuli);
+  }
 
   /** Shows a given study instead of the repository's (demo mode). */
   load(study: Study): void {

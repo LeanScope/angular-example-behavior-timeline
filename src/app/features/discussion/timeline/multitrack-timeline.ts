@@ -29,7 +29,10 @@ import type { Clip, Study, Stimulus, Transcript } from '../model/study.model';
 import { clipAt, clipLabel, MODERATOR_ROLE, MODERATOR_TRACK, trackOf } from '../model/transcript-mapper';
 import type { DropZone } from '../state/ingest.service';
 import { DETAIL_LEVELS, DiscussionUiState, type DetailLevel } from '../state/discussion-ui.state';
+import { castHint, castRows, type CastRow, type TimelineCast } from './cast-rows';
 import { clipSpans } from './clip-span';
+
+export type { TimelineCast } from './cast-rows';
 import { clockLabel } from './time-format';
 
 /** Track ids that are not participants. */
@@ -40,23 +43,8 @@ const MODERATOR = MODERATOR_TRACK;
 /** The head of the participants: picks personas for the cast, holds the screener hint. */
 const PARTICIPANTS_HEAD = 'participants-head';
 
-/**
- * The cast as the timeline lets the user pick it, in a choreo that asks for its moderator and
- * participants (see `DiscussionService`). Null: the cast is not the user's to pick.
- */
-export interface TimelineCast {
-  /** The cast slot the session asks for right now. */
-  asked: CastRole | null;
-  /** Roles the user can still change (the session has not got its answer yet). */
-  editable: Record<CastRole, boolean>;
-  /** The personas the ▾ menu offers per role. */
-  options: Record<CastRole, RosterEntry[]>;
-  /** Whether "Übernehmen" has something to send for the participants. */
-  ready: boolean;
-}
-
 /** A cast action in a track head (handled by one listener on the canvas, see `castAction`). */
-type CastAction = 'menu-moderator' | 'menu-participants' | 'remove' | 'submit';
+type CastAction = 'menu-moderator' | 'menu-participants' | 'remove' | 'submit' | 'toggle';
 
 /** vis-timeline works in dates; this timeline in seconds from the start (date 0). */
 const ms = (seconds: number) => new Date(Math.round(seconds * 1000));
@@ -135,9 +123,11 @@ export class MultitrackTimeline {
   readonly restart = output<void>();
   /** The cast the user can pick here, if any. */
   readonly cast = input<TimelineCast | null>(null);
-  /** A persona picked from a track head's ▾ menu. */
+  /** Nothing takes a document any more (a recording, or the data basis is settled): no drop hints. */
+  readonly dropsClosed = input(false);
+  /** A persona picked: from a track head's ▾ menu, or ticked in its candidate row. */
   readonly castPick = output<{ role: CastRole; guid: string }>();
-  /** A participant row's ×. */
+  /** A participant row's ×, or its candidate row unticked. */
   readonly castRemove = output<string>();
   /** "Übernehmen": the picks answer the asked cast slot. */
   readonly castSubmit = output<CastRole>();
@@ -329,7 +319,14 @@ export class MultitrackTimeline {
     if (action === 'remove') {
       this.castRemove.emit(button.dataset['guid'] ?? '');
     } else if (action === 'submit') {
-      this.castSubmit.emit('participants');
+      const asked = this.cast()?.asked;
+      if (asked) this.castSubmit.emit(asked);
+    } else if (action === 'toggle') {
+      const guid = button.dataset['guid'] ?? '';
+      const role = button.dataset['role'] as CastRole;
+      // The moderator is one persona: ticking another replaces it. A participant ticks on and off.
+      if (role === 'participants' && button.dataset['picked'] === 'true') this.castRemove.emit(guid);
+      else this.castPick.emit({ role, guid });
     } else {
       const role: CastRole = action === 'menu-moderator' ? 'moderator' : 'participants';
       if (this.castMenu()?.role === role) return this.castMenu.set(null);
@@ -464,6 +461,15 @@ export class MultitrackTimeline {
     const canvas = this.canvas().nativeElement;
     // Capture: the cast buttons answer before vis-timeline sees the click.
     canvas.addEventListener('click', (event) => this.castAction(event), true);
+    // A candidate row is a tick box without being a button: Enter and Space tick it too.
+    canvas.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      const row = (event.target as Element | null)?.closest?.<HTMLElement>('[data-cast-action="toggle"]');
+      if (!row) return;
+      event.preventDefault();
+      event.stopPropagation();
+      row.click();
+    }, true);
     canvas.addEventListener('mouseleave', () => {
       this.stopEdgeScroll();
       this.ui.hoverTime.set(null);
@@ -526,6 +532,8 @@ export class MultitrackTimeline {
   }
 
   private selectTrack(group: string): void {
+    // A candidate row is ticked, not selected: its click belongs to `castAction`.
+    if (castRows(this.cast()).some((row) => row.id === group)) return;
     if (group !== GUIDE && group !== QUESTIONS && group !== STIMULI && group !== PARTICIPANTS_HEAD) {
       this.ui.togglePersona(group, this.transcript().clips);
     }
@@ -555,15 +563,19 @@ export class MultitrackTimeline {
     const cast = this.cast();
     const asked = this.ui.askedPlace();
     const moderatorHead = speakerHead(MODERATOR, this.moderatorName(), 'MO', true, true, this.moderatorImage(), MODERATOR_ROLE, active, this.moderatorColor() ?? undefined);
-    if (cast?.editable.moderator) moderatorHead.append(castButton('menu-moderator', 'Moderation wählen', 'chevron-down'));
     const participantsHead = label('Teilnehmende', 'users');
-    if (cast?.editable.participants) {
+    // Before the session asks, a ▾ menu picks ahead. While it asks, everyone offered is listed
+    // as a row to tick, and "Übernehmen" in the head answers.
+    if (cast?.editable.moderator && cast.asked !== 'moderator') {
+      moderatorHead.append(castButton('menu-moderator', 'Moderation wählen', 'chevron-down'));
+    }
+    if (cast?.editable.participants && cast.asked !== 'participants') {
       participantsHead.append(castButton('menu-participants', 'Teilnehmende hinzufügen', 'chevron-down'));
     }
-    if (cast?.asked === 'participants') {
+    if (cast?.asked) {
       const submit = castButton('submit', 'Übernehmen', 'check', 'Übernehmen');
       submit.toggleAttribute('disabled', !cast.ready);
-      participantsHead.append(submit);
+      (cast.asked === 'moderator' ? moderatorHead : participantsHead).append(submit);
     }
     const groups: TimelineGroup[] = [
       { id: GUIDE, order: 0, content: label('Leitfaden', 'book'), className: 'track-guide' },
@@ -585,6 +597,18 @@ export class MultitrackTimeline {
         className: 'track-hint track-participants' + (asked === 'participants' ? ' asked' : ''),
       },
     ];
+    const candidates = castRows(cast);
+    candidates.forEach((row, i) => {
+      groups.push({
+        id: row.id,
+        // Moderator candidates sit right under the moderator, participants under their head.
+        order: row.role === 'moderator' ? 3 + (i + 1) / 1000 : 10 + i,
+        content: candidateHead(row, active),
+        className: 'track-speaker track-candidate' + (row.picked ? ' picked' : ''),
+      });
+    });
+    // While the participants are asked for, their candidate rows stand in for the tracks.
+    if (cast?.asked === 'participants') return groups;
     participants.forEach((p, i) => {
       const head = speakerHead(p.guid, p.name, p.initials, p.filled, false, p.imageUrl, p.role, active, p.color);
       if (cast?.editable.participants) head.append(castButton('remove', `${p.name} entfernen`, 'close', '', p.guid));
@@ -625,7 +649,8 @@ export class MultitrackTimeline {
         align: 'auto',
       });
     }
-    if (!study.guide) items.push(hint(GUIDE, length, 'Leitfaden (.docx, .md) oder Aufzeichnung (.vtt) hier ablegen'));
+    const open = !this.dropsClosed();
+    if (open && !study.guide) items.push(hint(GUIDE, length, 'Leitfaden (.docx, .md) oder Aufzeichnung (.vtt) hier ablegen'));
 
     transcript.badges.forEach((badge, i) => {
       const question = questions.get(badge.questionKey);
@@ -663,8 +688,13 @@ export class MultitrackTimeline {
         editable: { updateTime: true, updateGroup: false, remove: false },
       });
     }
-    if (study.stimuli.length === 0) items.push(hint(STIMULI, length, 'Bilder oder PDFs hierher ziehen'));
-    if (!study.screener?.participants.length) {
+    if (open && study.stimuli.length === 0) items.push(hint(STIMULI, length, 'Bilder oder PDFs hierher ziehen'));
+    // The asked cast row says the session's question; else the participants' row takes a screener.
+    const cast = this.cast();
+    const question = castHint(cast);
+    if (question && cast?.asked) {
+      items.push(hint(cast.asked === 'moderator' ? MODERATOR : PARTICIPANTS_HEAD, length, question));
+    } else if (open && !study.screener?.participants.length) {
       items.push(hint(PARTICIPANTS_HEAD, length, 'Screener (.xlsx, .docx) hier ablegen'));
     }
 
@@ -780,6 +810,25 @@ function castButton(action: CastAction, title: string, icon: string, caption = '
   button.append(iconSvg(icon));
   if (caption) button.append(text('span', caption));
   return button;
+}
+
+/** A candidate's row: the whole head ticks it on or off (handled by `castAction`). */
+function candidateHead(row: CastRow, activeTrack: string | null | undefined): HTMLElement {
+  const head = speakerHead(row.id, row.name, row.initials, true, false, row.imageUrl, undefined, activeTrack);
+  head.classList.add('candidate');
+  head.dataset['castAction'] = 'toggle';
+  head.dataset['guid'] = row.guid;
+  head.dataset['role'] = row.role;
+  head.dataset['picked'] = String(row.picked);
+  head.setAttribute('role', row.role === 'moderator' ? 'radio' : 'checkbox');
+  head.setAttribute('aria-checked', String(row.picked));
+  head.tabIndex = 0;
+  head.title = row.picked ? `${row.name} – gewählt` : `${row.name} wählen`;
+  const mark = document.createElement('span');
+  mark.className = 'candidate-mark';
+  if (row.picked) mark.append(iconSvg('check'));
+  head.append(mark);
+  return head;
 }
 
 function speakerHead(

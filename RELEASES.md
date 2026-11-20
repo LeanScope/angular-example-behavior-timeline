@@ -2,40 +2,56 @@
 
 ## 0.11.0 — 2026-11-20
 
-First step of "Thomas guides the whole process": the guide and its chapters. The director track,
-the turn-by-turn discussion and the personas' state at the cursor follow.
+First step of "Thomas guides the whole process": the guide, its choreos, and answering them in
+the app. The director track, the turn-by-turn discussion and the personas' state at the cursor
+follow.
 
-- **The guide leads through the process in chapters** (`src/app/features/guide/`). A chapter is a
-  choreo run as a session of its own. The first is `LEANSCOPE_CHOREO_SCENARIO_GUID` (the data
-  basis); the new, optional `APP_DIRECTOR_CHOREO_GUID` is the second (one director instruction
-  per turn). When a chapter reaches its authored end, `GuideService` starts the next one and the
-  support widget follows. Any other end (an error, a stop) leaves the guide where it is. A
+- **The guide leads through a row of choreos** (`src/app/features/guide/`), each run as a session
+  of its own. The first is `LEANSCOPE_CHOREO_SCENARIO_GUID` (the data basis); the new, optional
+  `APP_DIRECTOR_CHOREO_GUID` is the second ("🎬 Thomas zeigt, wie man Regie führt": one director
+  instruction per turn). When one reaches its authored end, `GuideService` starts the next and
+  the support widget follows. Any other end (an error, a stop) leaves the guide where it is. A
   session LeanScope started (`?sessionToken=`) is recognised by the choreo it runs
   (`GET …/config`) and goes on the same way.
-- **The support widget belongs to the guide, not to the page.** `GuideService` (root) shows it
-  for its session and hides it over a recording or the player. While a question has a place in
-  the app, the minimized widget sits next to it; while the guide only explains, it sits at its
-  home position.
-- **The cast carries over between chapters.** The chapters reference the same 🍱 Inventory. The
-  guide reads it from the session's `inventory` frames, and the timeline takes moderator and
-  participants from it when the running chapter doesn't ask for them.
-- **The director's instruction has a place.** A form with the field `innerVoice` sends the app to
-  the "Diskussion" view (`SlotPlace` `director`). Until the timeline has its director track, the
-  instruction is answered in the widget (or in the form under the discussion without one).
-- **The widget points to the app for its slots.** The first chapter's six single-field slots are
-  passed as `hostSlots`, so the widget shows a pointer to the app's place instead of a second form.
-- **The guide starts with the app.** Opening the app (signed in, no demo, no recording) starts the
-  first chapter at once; it no longer waits for "Diskussion starten". Taking a recording away
-  brings it back.
+- **The guide starts with the app and rejoins its last session.** Opening the app (signed in, no
+  demo, no recording) asks the agent server for the session this browser ran last
+  (`sessionScenarioGuid`, remembered as an id, never a token): a running one is joined at once, a
+  stored one resumed, else a new one starts. "Tour starten" (in the "Studie" view and in the
+  timeline's ⋮ menu) starts over.
+- **The support widget belongs to the guide, not to the page.** It is hidden over a recording or
+  the player. The minimized widget sits next to the place where a question is answered and stays
+  there between questions; a question without a place in the app sends it to its home position.
+  Without room beside the place it sits above its right end (else below), not on the neighbour.
+- **The cast is picked in the row header.** While the session asks for the moderator or the
+  participants, everyone offered is listed as a row to tick under that head, with the session's
+  question in the row; "Übernehmen" answers, and the unticked rows go. The moderator no longer
+  answers on the first click. Picks survive a new step arriving meanwhile.
+- **The cast carries over between choreos.** They reference the same 🍱 Inventory. The guide reads
+  it from the session's `inventory` frames, and the timeline takes moderator and participants
+  from it when the running choreo doesn't ask for them.
+- **An earlier answer can be taken away.** A handed-over file's × (or new files dropped on its
+  zone) undoes the session back to that question; the answers given after it go in again by
+  themselves, and a removed optional answer is not asked again. An answer others rest on
+  (`CLAIMS` between their facets) is only removed together with them, on "Auch entfernen".
+  Within one visit only: after a reload the earlier files are no longer at hand.
+- **A settled data basis is closed.** Once the guide has moved on to a later choreo, the zones
+  and the timeline's drop hints take nothing more: nothing would ask for it. "Tour starten"
+  starts over. What the first choreo was told (the cast above all) goes along to the next one in
+  the app, also across a reload; the Inventory itself keeps only the slots it declares.
 - **An optional document can be skipped.** While the session asks for a document whose question
   names no required field, its zone offers "Überspringen" (an empty answer). The cast is never
   optional.
-- **Handed-over files show inside their zone**, not under it, so a long file name no longer runs
-  into the next zone.
-- **The minimized widget no longer covers the neighbouring zone.** Without room beside the asked
-  place it sits above its right end (else below).
-- Generic layer: `LeanScopeSessionService.sessionConfig()`, typed `InventoryFrame` /
-  `InventoryRow` / `SessionConfig`, `hostSlots` on `SupportWidget.show()`.
+- **Handed-over files show inside their zone**, the message under the file name when the zone is
+  narrow, and handed-over stimuli show as thumbnails in their zone and on the timeline's track
+  (from the files themselves, for this visit).
+- **The director's instruction has a place.** A form with the field `innerVoice` sends the app to
+  the "Diskussion" view (`SlotPlace` `director`). Until the timeline has its director track, the
+  instruction is answered in the widget (or in the form under the discussion without one).
+- **The widget points to the app for its slots.** Every single-field slot the app has a place for
+  is passed as `hostSlots`, so the widget shows a pointer instead of a second form.
+- Generic layer: `LeanScopeSessionService.undo()` / `redo()` / `undoState` / `sessionConfig()`,
+  `steps` following `branch` frames, `SessionRequest.sessionScenarioGuid`, typed `InventoryFrame`,
+  `BranchFrame`, `UndoState`, `SessionConfig`, `hostSlots` on `SupportWidget.show()`.
 
 ## 0.10.3 — 2026-11-17
 

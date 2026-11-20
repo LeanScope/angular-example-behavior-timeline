@@ -23,6 +23,18 @@ const STIMULI = 'image/*,application/pdf';
         Legen Sie das Angebot zur Studie ab. Ziele und Forschungsfragen werden daraus gelesen und
         stehen der ganzen Simulation zur Verfügung.
       </p>
+      @if (canRestart()) {
+        <button
+          ds-button
+          variant="ghost"
+          type="button"
+          class="restart"
+          title="Thomas beginnt die Tour von vorn, mit einer neuen Sitzung"
+          (click)="restart.emit()"
+        >
+          <ds-icon name="refresh" /> Tour starten
+        </button>
+      }
     </div>
 
     <app-drop-zone
@@ -30,6 +42,7 @@ const STIMULI = 'image/*,application/pdf';
       hint="Word oder Markdown – Ziele und Forschungsfragen werden herausgelesen"
       [accept]="documents"
       [jobs]="jobsOf()('study-brief')"
+      [locked]="closed() ? 'read-only' : null"
       [asked]="askedFor('study-brief')"
       [skippable]="asked()?.optional ?? false"
       (skip)="skipped.emit()"
@@ -120,7 +133,7 @@ const STIMULI = 'image/*,application/pdf';
               ? 'Die Aufzeichnung nennt keinen Leitfaden'
               : 'Word oder Markdown – oder eine Aufzeichnung (.vtt)'
         "
-        [locked]="fromRecording() ? 'read-only' : null"
+        [locked]="fromRecording() || closed() ? 'read-only' : null"
         [busy]="loadingRecording() && !study().guide ? 'Leitfaden wird gelesen' : null"
         [accept]="documents"
         [jobs]="jobsOf()('interview-guide')"
@@ -143,7 +156,7 @@ const STIMULI = 'image/*,application/pdf';
               ? 'Eingelesen: ' + study().screener!.title
               : 'Excel oder Word, wie er ist'
         "
-        [locked]="fromRecording() ? 'disabled' : null"
+        [locked]="fromRecording() ? 'disabled' : closed() ? 'read-only' : null"
         [accept]="documents"
         [jobs]="jobsOf()('screener')"
         [asked]="askedFor('screener')"
@@ -162,7 +175,7 @@ const STIMULI = 'image/*,application/pdf';
               ? 'Die Aufzeichnung zeigt keine Stimuli'
               : 'Bilder, Screenshots oder PDFs'
         "
-        [locked]="fromRecording() ? 'read-only' : null"
+        [locked]="fromRecording() || closed() ? 'read-only' : null"
         [busy]="loadingRecording() ? 'Stimuli werden geladen' : null"
         [accept]="stimuli"
         [multiple]="true"
@@ -207,6 +220,9 @@ const STIMULI = 'image/*,application/pdf';
       margin: 0;
       color: var(--color-muted);
       font-size: var(--text-lg);
+    }
+    .intro .restart {
+      margin-top: var(--space-3);
     }
     .cards {
       display: grid;
@@ -367,6 +383,15 @@ export class StudyView {
   readonly jobsOf = input.required<(zone: Zone) => IngestJob[]>();
   /** The zone whose document the session asks for right now, and what it said. */
   readonly asked = input<{ zone: Zone; text: string; optional?: boolean } | null>(null);
+  /**
+   * The data basis is settled (the guide has moved on to a later choreo): the zones show what
+   * they hold and take nothing more.
+   */
+  readonly closed = input(false);
+  /** "Tour starten" is on offer: the guide can start over (no recording, setup complete). */
+  readonly canRestart = input(false);
+  /** "Tour starten": the guide starts over at its first choreo. */
+  readonly restart = output<void>();
   /**
    * The recorded discussions of the connected repository to choose from: `null` while they are
    * read, `undefined` when no repository is connected (the card is then left out).

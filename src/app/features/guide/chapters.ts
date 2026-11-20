@@ -2,50 +2,29 @@ import type { InventoryRow } from '../../leanscope/agent-server.types';
 import type { AppEnv } from '../app-env';
 
 /**
- * One chapter of the guided process: a choreo the guide (the persona who leads through the app in
- * the support widget) runs as a session of its own. The chapters run in order; the next one
- * starts when the one before reached its authored end.
+ * The guided process is a row of choreos: the guide (the persona who leads through the app in the
+ * support widget) runs one after the other, each as a session of its own. The next one starts
+ * when the one before reached its authored end. A "chapter" is nothing but the choreo at a
+ * position in this row; its `_guid` is its identity.
+ *
+ * A choreo without a guid is left out, so the row ends where the configuration does. A further
+ * chapter (e.g. the analysis) is one more entry here.
  */
-export interface Chapter {
-  id: string;
-  title: string;
-  /** `_guid` of the chapter's choreo. */
-  choreoGuid: string;
-  /**
-   * Field keys the app answers in a place of its own. For a question that asks for exactly one
-   * of them the widget points to the app instead of showing its form (`hostSlots`).
-   */
-  hostSlots: readonly string[];
+export function guideChoreos(entryChoreoGuid: string, env: AppEnv): string[] {
+  return [
+    // The data basis: documents, moderator, participants (LEANSCOPE_CHOREO_SCENARIO_GUID).
+    entryChoreoGuid,
+    // "🎬 Thomas zeigt, wie man Regie führt": one director instruction per turn.
+    env.directorChoreoGuid,
+  ]
+    .map((guid) => guid.trim())
+    .filter((guid) => guid !== '');
 }
 
-/**
- * The chapters this build is configured for, in order. One without a choreo guid is left out, so
- * the list ends where the configuration does. A further chapter (e.g. the analysis) is one more
- * entry here.
- */
-export function chaptersOf(entryChoreoGuid: string, env: AppEnv): Chapter[] {
-  const all: Chapter[] = [
-    {
-      id: 'data-basis',
-      title: 'Datengrundlage',
-      choreoGuid: entryChoreoGuid.trim(),
-      hostSlots: ['brief', 'document', 'screener', 'stimuli', 'moderator', 'participants'],
-    },
-    {
-      id: 'direction',
-      title: 'Regie',
-      choreoGuid: env.directorChoreoGuid.trim(),
-      // Its form has several fields (speaker and instruction), which the widget shows itself.
-      hostSlots: [],
-    },
-  ];
-  return all.filter((chapter) => chapter.choreoGuid !== '');
-}
-
-/** The chapter after `current`, or null when it is the last (or not one of them). */
-export function nextChapter(chapters: readonly Chapter[], current: Chapter | null): Chapter | null {
-  const index = current ? chapters.findIndex((c) => c.id === current.id) : -1;
-  return index === -1 ? null : (chapters[index + 1] ?? null);
+/** The choreo after `current`, or null when it is the last (or not one of them). */
+export function nextChoreo(choreos: readonly string[], current: string | null): string | null {
+  const index = current ? choreos.indexOf(current) : -1;
+  return index === -1 ? null : (choreos[index + 1] ?? null);
 }
 
 /**

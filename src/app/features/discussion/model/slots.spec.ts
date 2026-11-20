@@ -124,6 +124,34 @@ describe('castFromSlots', () => {
   });
 });
 
+describe('castFromSlots with a review line', () => {
+  it('reads the picks from the review\'s data, not the personas its schema offered', () => {
+    const offered = [MAREN, SANDRA, KLAUS].map((guid) => ({ const: guid, title: guid }));
+    const step = {
+      action: 'UPDATE',
+      guid: 's',
+      scenarioGuid: 'x',
+      listIndex: null,
+      title: null,
+      actorSymbolRef: 'human',
+      predecessorRefs: null,
+      actions: null,
+      questions: JSON.stringify({
+        type: 'tool_input_schema',
+        schema: { properties: { participants: { type: 'array', items: { type: 'string', oneOf: offered } } } },
+      }),
+      line: JSON.stringify({
+        kind: 'review',
+        schema: { properties: { participants: { type: 'array', items: { type: 'string', oneOf: offered } } } },
+        data: { participants: [SANDRA] },
+      }),
+    } as Step;
+    const cast = castFromSlots([step]);
+    expect(cast.participants).toEqual([SANDRA]);
+    expect(cast.answered.participants).toBe(true);
+  });
+});
+
 describe('withRememberedCast', () => {
   const m = '11111111-1111-4111-8111-111111111111';
   const p1 = '22222222-2222-4222-8222-222222222222';
@@ -138,6 +166,15 @@ describe('withRememberedCast', () => {
       participants: [p1, p2],
       answered: { moderator: true, participants: true },
     });
+  });
+
+  it('takes a persona\'s guid, not a guid inside its portrait URL', () => {
+    const cast = withRememberedCast(
+      open,
+      { participants: [{ _guid: p1, imageUrl: `https://x.example/media/${m}?size=s` }, `["${p2}"]`] },
+      null,
+    );
+    expect(cast.participants).toEqual([p1, p2]);
   });
 
   it('leaves a role open while the session asks for it, and keeps the session\'s own answers', () => {

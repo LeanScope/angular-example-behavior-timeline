@@ -11,7 +11,7 @@ import { SupportWidget } from '../../leanscope/ui/support-widget';
 import { APP_ENV, EMPTY_APP_ENV } from '../app-env';
 import { GUIDE_SESSION_FACTORY, GuideService } from './guide.service';
 
-function setup(options: { director?: string } = {}) {
+function setup(options: { director?: string; gone?: string } = {}) {
   const state = signal<SessionState>('idle');
   const endReason = signal<EndReason | null>(null);
   const sessionOf = signal<SessionResponse | null>(null);
@@ -21,13 +21,19 @@ function setup(options: { director?: string } = {}) {
     state,
     endReason,
     session: sessionOf,
-    start: vi.fn(async (_overrides?: { choreoScenarioGuid?: string }) => {
+    pendingQuestion: signal(null),
+    start: vi.fn(async (overrides?: { choreoScenarioGuid?: string; sessionScenarioGuid?: string }) => {
       started += 1;
+      if (options.gone && overrides?.sessionScenarioGuid === options.gone) {
+        state.set('error');
+        sessionOf.set(null);
+        return;
+      }
       state.set('working');
       endReason.set(null);
       sessionOf.set({
         sessionId: '',
-        sessionScenarioGuid: '',
+        sessionScenarioGuid: overrides?.sessionScenarioGuid ?? `scenario-${started}`,
         sessionToken: `tok-${started}`,
         controllerUrl: '',
         uiUrl: 'https://ui.example/?theme=mindline&themeMode=follow',
@@ -70,12 +76,14 @@ function setup(options: { director?: string } = {}) {
 }
 
 describe('GuideService', () => {
-  it('starts with the first chapter and shows its chat in the widget', async () => {
+  beforeEach(() => localStorage.clear());
+
+  it('starts with the first choreo and shows its chat in the widget', async () => {
     const { guide, session, widget } = setup();
     await guide.start();
     TestBed.tick();
     expect(session.start).toHaveBeenCalledWith({ choreoScenarioGuid: 'entry' });
-    expect(guide.chapter()?.id).toBe('data-basis');
+    expect(guide.choreo()).toBe('entry');
     expect(widget.show).toHaveBeenLastCalledWith('tok-1', {
       theme: 'mindline',
       themeMode: 'follow',
@@ -83,21 +91,21 @@ describe('GuideService', () => {
     });
   });
 
-  it('goes on to the next chapter when one reaches its authored end, and the widget follows', async () => {
+  it('goes on to the next choreo when one reaches its authored end, and the widget follows', async () => {
     const { guide, session, widget, end } = setup();
     await guide.start();
     end('terminal');
     await vi.waitFor(() => expect(session.start).toHaveBeenLastCalledWith({ choreoScenarioGuid: 'director' }));
     TestBed.tick();
-    expect(guide.chapter()?.id).toBe('direction');
-    expect(widget.show).toHaveBeenLastCalledWith('tok-2', expect.objectContaining({ hostSlots: [] }));
+    expect(guide.choreo()).toBe('director');
+    expect(widget.show).toHaveBeenLastCalledWith('tok-2', expect.anything());
 
-    // The last chapter's end starts nothing more.
+    // The last choreo's end starts nothing more.
     end('terminal');
     expect(session.start).toHaveBeenCalledTimes(2);
   });
 
-  it('stays where it is when a chapter ends any other way, or is the last', async () => {
+  it('stays where it is when a choreo ends any other way, or is the last', async () => {
     const { guide, session, end } = setup();
     await guide.start();
     end('error');
@@ -110,7 +118,7 @@ describe('GuideService', () => {
     expect(alone.session.start).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps what the Inventory remembers across chapters', async () => {
+  it('keeps what the Inventory remembers across choreos', async () => {
     const { guide, frame, end } = setup();
     await guide.start();
     frame('inventory', { rows: [{ facetGuid: 'f', label: 'Moderatorin', values: { 'moderator[0]': 'm1' } }] });
@@ -119,11 +127,11 @@ describe('GuideService', () => {
     expect(guide.answers()).toEqual({ moderator: ['m1'] });
   });
 
-  it('follows an attached session and knows its chapter from the choreo it runs', async () => {
+  it('follows an attached session and knows which of its choreos it runs', async () => {
     const { guide, session, end } = setup();
     await guide.attach('given');
     expect(session.begin).toHaveBeenCalled();
-    expect(guide.chapter()?.id).toBe('data-basis');
+    expect(guide.choreo()).toBe('entry');
     end('terminal');
     await vi.waitFor(() => expect(session.start).toHaveBeenCalledWith({ choreoScenarioGuid: 'director' }));
   });
@@ -141,7 +149,7 @@ describe('GuideService', () => {
     expect(widget.show).toHaveBeenLastCalledWith('tok-1', expect.anything());
     guide.stop();
     TestBed.tick();
-    expect(guide.chapter()).toBeNull();
+    expect(guide.choreo()).toBeNull();
     expect(widget.anchorTo).toHaveBeenLastCalledWith(null);
   });
 
@@ -155,5 +163,40 @@ describe('GuideService', () => {
     guide.anchor(null);
     expect(widget.anchorTo).toHaveBeenLastCalledWith(null);
     place.remove();
+  });
+
+  it('rejoins the session this browser remembers, of the choreo it ran', async () => {
+    const first = setup();
+    await first.guide.start();
+    first.frame('inventory', { rows: [{ facetGuid: 'f', label: 'Teilnehmende', values: { 'participants[0]': 'p1' } }] });
+    first.end('terminal');
+    await vi.waitFor(() => expect(first.guide.choreo()).toBe('director'));
+    expect(first.guide.pastFirst()).toBe(true);
+    await vi.waitFor(() => expect(first.session.start).toHaveBeenCalledTimes(2));
+
+    TestBed.resetTestingModule();
+    const again = setup();
+    await again.guide.start();
+    expect(again.session.start).toHaveBeenCalledWith({ choreoScenarioGuid: 'director', sessionScenarioGuid: 'scenario-2' });
+    expect(again.guide.choreo()).toBe('director');
+    // What the first choreo was told is still known, though this session never heard it.
+    expect(again.guide.answers()).toEqual({ participants: ['p1'] });
+  });
+
+  it('begins anew when the remembered session is gone, and on restart', async () => {
+    const first = setup();
+    await first.guide.start();
+
+    TestBed.resetTestingModule();
+    const gone = setup({ gone: 'scenario-1' });
+    await gone.guide.start();
+    expect(gone.session.start).toHaveBeenLastCalledWith({ choreoScenarioGuid: 'entry' });
+    expect(gone.guide.choreo()).toBe('entry');
+
+    TestBed.resetTestingModule();
+    const fresh = setup();
+    await fresh.guide.restart();
+    expect(fresh.session.start).toHaveBeenCalledTimes(1);
+    expect(fresh.session.start).toHaveBeenCalledWith({ choreoScenarioGuid: 'entry' });
   });
 });

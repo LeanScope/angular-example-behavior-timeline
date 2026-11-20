@@ -12,6 +12,7 @@ import {
   inject,
   input,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
@@ -30,6 +31,16 @@ import { toSelfContainedVtt } from './model/vtt-export';
 import { fromWebVtt, vttCast, type ImportedDiscussion } from './model/vtt-import';
 import { MODERATORS_BY_GUID, toModeratorRefs } from './model/actor-traits';
 import { loadRepositoryStimuli } from './model/repository-stimuli';
+import {
+  DATA_BASIS,
+  DATA_BASIS_FILES,
+  basisFileRefs,
+  toDataBasis,
+  withFileNames,
+  type DataBasis,
+  type DataBasisFilesResult,
+  type DataBasisResult,
+} from './model/data-basis';
 import { GUIDE_BY_GUID, guideFromSources, toRepositoryGuide } from './model/repository-guide';
 import { matchQuestions } from './model/question-match';
 import { RECORDINGS, loadRecording, toRecordings, topicQuestions, type RecordingEntry } from './model/repository-recording';
@@ -50,7 +61,7 @@ import { PanelroomPreview } from './preview/panelroom-preview';
 import { QuestionSidebar } from './sidebar/question-sidebar';
 import { DiscussionUiState, type DiscussionView } from './state/discussion-ui.state';
 import { DiscussionService } from './state/discussion.service';
-import { IngestService, ZONE_LABEL, type DropZone } from './state/ingest.service';
+import { IngestService, ZONE_LABEL, type DropZone, type IngestJob } from './state/ingest.service';
 import { SlotService } from './state/slot.service';
 import { StudyStore } from './state/study.store';
 import { StudyView } from './study/study-view';
@@ -72,6 +83,10 @@ const PLAYER_BUBBLE_LINES = { min: 5, max: 14 };
 
 /** The element of the place the session asks for: a drop zone's target or a timeline track head. */
 const ASKED_PLACE = 'app-drop-zone.asked .target, app-multitrack-timeline .vis-label.asked';
+
+const NO_FILES: File[] = [];
+/** The id of a status line that only recalls a file handed over before a reload. */
+const REMEMBERED_JOB = -1;
 
 const STATUS_LABEL: Record<DsStatusState, string> = {
   demo: 'Demo',
@@ -155,7 +170,7 @@ export class DiscussionPage implements OnInit {
   private readonly injector = inject(Injector);
   private readonly previewFold = viewChild<ElementRef<HTMLElement>>('previewFold');
   private readonly widget = inject(SupportWidget);
-  private readonly guide = inject(GuideService);
+  protected readonly guide = inject(GuideService);
   protected readonly resources = inject(RepositoryResourcesService);
   /** Blob URLs of the shown recording's repository files, revoked when another one loads. */
   private fileUrls: string[] = [];
@@ -250,10 +265,18 @@ export class DiscussionPage implements OnInit {
     };
   });
   protected readonly shell = inject(ShellContext);
-  protected readonly jobsOf = (zone: DropZone) => [
-    ...this.slots.jobsOf(zone),
-    ...this.ingest.jobsOf(zone),
-  ];
+  protected readonly jobsOf = (zone: DropZone): IngestJob[] => {
+    const live = [...this.slots.jobsOf(zone), ...this.ingest.jobsOf(zone)];
+    if (live.length) return live;
+    // Else what the data basis holds: as the repository keeps it, or (until that is read, or for
+    // a slot it does not keep) as this browser remembers it was handed over.
+    const names = this.recorded()
+      ? undefined
+      : (this.basis()[zone]?.map((f) => f.name) ?? this.guide.files()[zone]);
+    return names?.length
+      ? [{ id: REMEMBERED_JOB, zone, fileNames: names, state: 'done', message: 'Übergeben.' }]
+      : [];
+  };
   /** The status lines of all documents, read in or handed to the session. */
   protected readonly jobs = computed(() => [...this.ingest.jobs(), ...this.slots.jobs()]);
   /** The zone whose document the session asks for, for the "Studie" view to highlight. */
@@ -267,13 +290,21 @@ export class DiscussionPage implements OnInit {
   protected readonly timelineCast = computed<TimelineCast | null>(() => {
     const d = this.discussion;
     if (!d.slotted()) return null;
+    const asked = d.askedCast();
+    const draft = d.castDraft();
     return {
-      asked: d.askedCast(),
+      asked,
+      question: asked ? this.slots.askedText() : '',
       editable: { moderator: d.castEditable('moderator'), participants: d.castEditable('participants') },
       options: { moderator: d.castOptions('moderator'), participants: d.castOptions('participants') },
-      ready: d.castDraft().participants.length > 0,
+      choices: { moderator: d.castChoices('moderator'), participants: d.castChoices('participants') },
+      ready: asked === 'moderator' ? draft.moderator !== null : draft.participants.length > 0,
     };
   });
+  /** The data basis as the repository keeps it (see `loadBasis`). */
+  private readonly basis = signal<DataBasis>({});
+  private basisRun = 0;
+  private readonly handedStimuli = computed(() => this.slots.handed().get('stimulus') ?? NO_FILES);
   protected readonly hasClips = computed(() => this.transcript().clips.length > 0);
   /** No discussion can be started: a recording is shown, one runs, or the setup is incomplete. */
   protected readonly startDisabled = computed(
@@ -320,13 +351,36 @@ export class DiscussionPage implements OnInit {
     // of a recording or the player: the guide has no part in those.
     effect(() => this.guide.setTheme(this.theme(), this.themeMode()));
     effect(() => this.guide.suppress(this.recorded() || this.player.open()));
-    // The minimized widget sits next to the place where the current question is answered, and
-    // at its home position when there is none (the guide only explains).
+    // The stimuli handed to the guide show at once, in their zone and on the timeline's track.
+    effect(() => {
+      const files = this.handedStimuli();
+      const settled = this.guide.pastFirst();
+      // Untracked: showing them writes the store's own signals, which this effect must not follow.
+      untracked(() => {
+        // The next choreo's session starts with nothing handed over: what is shown stays.
+        if (files.length === 0 && settled) return;
+        this.store.showHanded(files);
+      });
+    });
+    // What the repository keeps of the data basis: read when the guide starts or rejoins, and
+    // again once the first choreo has settled it.
+    effect(() => {
+      const choreo = this.guide.choreo();
+      this.guide.pastFirst();
+      untracked(() => {
+        if (choreo && !this.recorded()) void this.loadBasis();
+      });
+    });
+    // The minimized widget sits next to the place where the current question is answered. A
+    // question without a place in the app is answered in the widget, at its home position.
+    // Between questions (the guide works or talks) it stays where it is.
     effect(() => {
       const place = this.ui.askedPlace();
+      const question = this.discussion.pendingQuestion();
       // The place renders after the view switch (and the timeline after its own effects).
       this.currentView();
-      this.guide.anchor(place ? ASKED_PLACE : null);
+      if (place) this.guide.anchor(ASKED_PLACE);
+      else if (question) this.guide.anchor(null);
     });
     // Player mode: the preview grows until it fills the room above the strip.
     afterRenderEffect((onCleanup) => {
@@ -396,6 +450,58 @@ export class DiscussionPage implements OnInit {
     void this.discussion.start();
   }
 
+  /**
+   * Reads what the first choreo's Inventory keeps: the documents by zone, and the stimuli as
+   * images. Quietly: without a login, or when the repository doesn't answer, the zones show what
+   * this browser remembers.
+   */
+  private async loadBasis(): Promise<void> {
+    const choreo = this.guide.choreos[0];
+    if (!choreo || !this.resources.available) return;
+    const run = ++this.basisRun;
+    try {
+      const refs = toDataBasis(await this.resources.query<DataBasisResult>(DATA_BASIS, { choreo }));
+      const guids = basisFileRefs(refs);
+      const basis = guids.length
+        ? withFileNames(refs, await this.resources.query<DataBasisFilesResult>(DATA_BASIS_FILES, { guids }))
+        : refs;
+      if (run !== this.basisRun) return;
+      this.basis.set(basis);
+      const stimuli = await loadRepositoryStimuli(
+        (basis.stimulus ?? []).map((file, i) => ({
+          guid: `basis:${file.fileRef}`,
+          name: file.name.replace(/\.[^.]+$/, ''),
+          url: '',
+          mimeType: file.mimeType,
+          fileRef: file.fileRef,
+          resourceRef: file.resourceRef,
+          start: i * 30,
+          end: (i + 1) * 30,
+        })),
+        (resource, file) => this.resources.file(resource, file),
+      );
+      if (run !== this.basisRun) return stimuli.forEach((s) => URL.revokeObjectURL(s.url));
+      this.store.showKept(stimuli);
+    } catch {
+      // The zones keep what this browser remembers.
+    }
+  }
+
+  /** "Tour starten": the guide starts over at its first chapter, with a new session. */
+  protected restartGuide(): void {
+    if (this.recorded() || this.missing().length > 0) return;
+    this.ui.cursorTime.set(0);
+    this.store.showHanded([]);
+    // Say what happens: a new session, in which the stored data basis is not asked for again.
+    const kept = (Object.keys(this.basis()) as DropZone[]).map((zone) => ZONE_LABEL[zone]);
+    this.notice.set(
+      kept.length
+        ? `Die Tour beginnt neu. Bereits gespeichert und daher nicht erneut erfragt: ${kept.join(', ')}. Zum erneuten Abfragen die gespeicherten Antworten im Inventory löschen.`
+        : 'Die Tour beginnt neu: Thomas startet eine neue Sitzung.',
+    );
+    void this.guide.restart();
+  }
+
   /** "Überspringen" on the asked zone. */
   protected async skipAsked(): Promise<void> {
     if (!(await this.slots.skip())) {
@@ -433,6 +539,11 @@ export class DiscussionPage implements OnInit {
       this.notice.set(`Bei einer Aufzeichnung wird nichts eingelesen (${ZONE_LABEL[event.zone]}).`);
       return;
     }
+    if (this.guide.pastFirst()) {
+      // The guide has moved on: nothing asks for a document any more.
+      this.notice.set(`Die Datengrundlage steht: ${ZONE_LABEL[event.zone]} wird nicht mehr angenommen. „Tour starten“ fängt von vorn an.`);
+      return;
+    }
     this.notice.set(null);
     // Documents answer the session's input slots. Only without a session, and with the ingest
     // choreo set up, are they read into the repository instead.
@@ -440,20 +551,23 @@ export class DiscussionPage implements OnInit {
     else void this.ingest.drop(event.zone, event.files);
   }
 
-  protected async pickCast(event: { role: CastRole; guid: string }): Promise<void> {
-    if (event.role === 'participants') return this.discussion.addParticipant(event.guid);
-    this.discussion.pickModerator(event.guid);
-    // The moderator is one persona: picking answers the slot when the session asks for it.
-    if (this.discussion.askedCast() === 'moderator') await this.submitCast('moderator');
+  /** A pick only drafts: "Übernehmen" in the asked role's head answers the session. */
+  protected pickCast(event: { role: CastRole; guid: string }): void {
+    if (event.role === 'participants') this.discussion.addParticipant(event.guid);
+    else this.discussion.pickModerator(event.guid);
   }
 
   protected async submitCast(role: CastRole): Promise<void> {
-    if (!(await this.discussion.submitCast(role))) {
+    if (!(await this.slots.submitCast(role))) {
       this.notice.set(this.discussion.error() ?? 'Die Auswahl wurde nicht angenommen.');
     }
   }
 
   protected dismissJob(id: number): void {
+    if (id === REMEMBERED_JOB) {
+      this.notice.set('Eine vor dem Neuladen übergebene Datei lässt sich hier nicht mehr entfernen. „Tour starten“ fängt von vorn an.');
+      return;
+    }
     this.ingest.dismiss(id);
     this.slots.dismiss(id);
   }

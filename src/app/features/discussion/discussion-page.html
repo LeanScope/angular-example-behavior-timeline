@@ -77,6 +77,15 @@
 @if (store.error(); as error) {
   <p class="banner error" role="alert">Die Studie konnte nicht gelesen werden: {{ error }}</p>
 }
+@if (slots.blocked(); as blocked) {
+  <p class="banner warn" role="alert">
+    <span>{{ blocked.message }}</span>
+    <button ds-button variant="ghost" type="button" (click)="slots.removeWithDependents()">Auch entfernen</button>
+    <button ds-button variant="ghost" size="icon" type="button" aria-label="Hinweis schließen" (click)="slots.dismissBlocked()">
+      <ds-icon name="close" />
+    </button>
+  </p>
+}
 @if (notice(); as message) {
   <p class="banner warn" role="status">
     <span>{{ message }}</span>
@@ -130,6 +139,9 @@
       [study]="study()"
       [jobsOf]="jobsOf"
       [asked]="askedZone()"
+      [closed]="guide.pastFirst()"
+      [canRestart]="!recorded() && missing().length === 0"
+      (restart)="restartGuide()"
       [recordings]="resources.available ? recordings() : undefined"
       [recordingsError]="recordingsError()"
       [currentRecording]="shownRecording()"
@@ -225,13 +237,14 @@
         [moderatorColor]="discussion.moderatorColor()"
         [playLabel]="playLabel()"
         [playDisabled]="hasClips() ? player.missing().length > 0 : startDisabled()"
-        [restartDisabled]="startDisabled()"
+        [restartDisabled]="recorded() || missing().length > 0"
         [cast]="timelineCast()"
+        [dropsClosed]="recorded() || guide.pastFirst()"
         (castPick)="pickCast($event)"
         (castRemove)="discussion.removeParticipant($event)"
         (castSubmit)="submitCast($event)"
         (play)="play()"
-        (restart)="startDiscussion()"
+        (restart)="restartGuide()"
         (dropped)="drop($event)"
         (stimulusMoved)="moveStimulus($event)"
         (exportVtt)="exportVtt()"

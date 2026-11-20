@@ -9,6 +9,11 @@ export interface SessionRequest {
   choreoScenarioGuid: string;
   /** The choreo's repository. Needed with a login JWT as Bearer, which names no repository. */
   choreoRepositoryId?: string;
+  /**
+   * The session's own scenario (its recording). Naming one that exists rejoins that session: a
+   * running one answers with its token, a stored one is resumed; else a new one starts under it.
+   */
+  sessionScenarioGuid?: string;
   /** e.g. 'en', 'de', 'de-DE'. */
   locale?: string;
   /** Values the session starts with, keyed like the choreo's inputs. */
@@ -215,6 +220,22 @@ export interface SessionConfig {
   sessionRepositoryId?: string;
   sessionScenarioGuid?: string;
   autoStart?: boolean;
+}
+
+/** The `undo_state` frame: whether the last turn can be taken back, or a taken-back one restored. */
+export interface UndoState {
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
+/**
+ * The `branch` frame: an undo detached turns from the conversation, or a redo attached them
+ * again. `activeChain` is the conversation after it, as step guids in order.
+ */
+export interface BranchFrame extends UndoState {
+  op: 'detach' | 'attach' | 'prune';
+  members: string[];
+  activeChain: string[];
 }
 
 export interface SseFrame {

@@ -13,7 +13,7 @@ export interface AppEnv {
   /** `_guid` of the analysis choreo that answers questions about the study (APP_ANALYSIS_CHOREO_GUID). */
   analysisChoreoGuid: string;
   /**
-   * `_guid` of the choreo "🎬 Thomas führt Regie" (APP_DIRECTOR_CHOREO_GUID): the guide's second
+   * `_guid` of the choreo "🎬 Thomas zeigt, wie man Regie führt" (APP_DIRECTOR_CHOREO_GUID): the guide's second
    * chapter, which asks for one director instruction per turn of the discussion.
    */
   directorChoreoGuid: string;

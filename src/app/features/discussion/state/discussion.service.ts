@@ -74,9 +74,14 @@ export class DiscussionService {
     const place = slotOf(this.session.pendingQuestion());
     return place?.kind === 'cast' ? place.role : null;
   });
-  /** The cast as the session's answered slots name it, or else as the Inventory remembers it. */
-  private readonly slotCast = computed(() =>
-    withRememberedCast(castFromSlots(this.session.steps()), this.guide.answers(), this.askedCast()),
+  /**
+   * The cast as the session's answered slots name it, or else as the Inventory remembers it.
+   * Equal by content: a new step that changes nothing here must not reset the user's picks
+   * (`castDraft` follows this signal).
+   */
+  private readonly slotCast = computed(
+    () => withRememberedCast(castFromSlots(this.session.steps()), this.guide.answers(), this.askedCast()),
+    { equal: (a, b) => JSON.stringify(a) === JSON.stringify(b) },
   );
   /** The session's choreo has input slots this app knows: the cast comes from them. */
   readonly slotted = computed(
@@ -206,6 +211,23 @@ export class DiscussionService {
       ? offered.map((o) => this.entry(o.guid, o.label))
       : this.roster();
     return options.filter((o) => !taken.has(o.guid));
+  }
+
+  /**
+   * Everyone offered for a role, picked or not: the candidates shown while the session asks.
+   * A persona already picked stays listed even when the question doesn't offer it.
+   */
+  castChoices(role: CastRole): (RosterEntry & { picked: boolean })[] {
+    const draft = this.castDraft();
+    const picked = role === 'moderator' ? (draft.moderator ? [draft.moderator] : []) : draft.participants;
+    const question = this.askedCast() === role ? this.session.pendingQuestion() : null;
+    const offered = personaChoices(question);
+    const base = offered ? offered.map((o) => this.entry(o.guid, o.label)) : this.roster();
+    // The moderator does not take part as a participant.
+    const listed = role === 'participants' ? base.filter((o) => o.guid !== draft.moderator) : base;
+    const known = new Set(listed.map((o) => o.guid));
+    const all = [...listed, ...picked.filter((guid) => !known.has(guid)).map((guid) => this.entry(guid))];
+    return all.map((o) => ({ ...o, picked: picked.includes(o.guid) }));
   }
 
   pickModerator(guid: string): void {

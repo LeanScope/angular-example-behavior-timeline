@@ -1,19 +1,19 @@
 import { EMPTY_APP_ENV } from '../app-env';
-import { chaptersOf, inventoryAnswers, nextChapter } from './chapters';
+import { guideChoreos, inventoryAnswers, nextChoreo } from './chapters';
 
-describe('chapters', () => {
-  it('lists the configured chapters in order and leaves out one without a choreo', () => {
-    expect(chaptersOf(' entry ', EMPTY_APP_ENV).map((c) => c.choreoGuid)).toEqual(['entry']);
-    const both = chaptersOf('entry', { ...EMPTY_APP_ENV, directorChoreoGuid: 'director' });
-    expect(both.map((c) => c.id)).toEqual(['data-basis', 'direction']);
-    expect(chaptersOf('', EMPTY_APP_ENV)).toEqual([]);
+describe('the guide\'s choreos', () => {
+  it('lists the configured choreos in order and leaves out one without a guid', () => {
+    expect(guideChoreos(' entry ', EMPTY_APP_ENV)).toEqual(['entry']);
+    expect(guideChoreos('entry', { ...EMPTY_APP_ENV, directorChoreoGuid: 'director' })).toEqual(['entry', 'director']);
+    expect(guideChoreos('', EMPTY_APP_ENV)).toEqual([]);
   });
 
-  it('names the chapter after the current one', () => {
-    const chapters = chaptersOf('entry', { ...EMPTY_APP_ENV, directorChoreoGuid: 'director' });
-    expect(nextChapter(chapters, chapters[0])?.id).toBe('direction');
-    expect(nextChapter(chapters, chapters[1])).toBeNull();
-    expect(nextChapter(chapters, null)).toBeNull();
+  it('names the choreo after the current one', () => {
+    const choreos = ['entry', 'director'];
+    expect(nextChoreo(choreos, 'entry')).toBe('director');
+    expect(nextChoreo(choreos, 'director')).toBeNull();
+    expect(nextChoreo(choreos, 'other')).toBeNull();
+    expect(nextChoreo(choreos, null)).toBeNull();
   });
 
   it('reads the remembered answers by field key, list entries in order', () => {

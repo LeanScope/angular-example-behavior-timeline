@@ -64,7 +64,7 @@ import type { IngestJob } from '../state/ingest.service';
             <span class="job" [attr.data-state]="job.state" role="status">
               <span class="files">{{ job.fileNames.join(', ') }}</span>
               <span class="message">{{ job.message }}</span>
-              @if (job.state === 'done' || job.state === 'error') {
+              @if ((job.state === 'done' && locked() === null) || job.state === 'error') {
                 <button type="button" class="dismiss" aria-label="Meldung schließen" (click)="dismiss.emit(job.id)">
                   <ds-icon name="close" />
                 </button>
@@ -194,7 +194,9 @@ import type { IngestJob } from '../state/ingest.service';
     }
     .job {
       display: flex;
-      gap: var(--space-2);
+      /* In a narrow zone the message goes under the file name instead of being squeezed. */
+      flex-wrap: wrap;
+      gap: var(--space-1) var(--space-2);
       align-items: center;
       margin: 0;
       padding: var(--space-1) var(--space-3);
@@ -221,13 +223,15 @@ import type { IngestJob } from '../state/ingest.service';
       animation: pulse 0.9s var(--ease-standard) infinite alternate;
     }
     .files {
+      flex: 1 1 auto;
       min-width: 0;
       font-weight: 600;
       overflow-wrap: anywhere;
     }
     .message {
-      flex: 1;
+      flex: 1 1 12rem;
       min-width: 0;
+      overflow-wrap: anywhere;
     }
     .dismiss {
       display: inline-flex;

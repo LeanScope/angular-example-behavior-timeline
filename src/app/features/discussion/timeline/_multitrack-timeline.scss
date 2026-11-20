@@ -628,6 +628,58 @@ app-multitrack-timeline {
     }
   }
 
+  // A candidate while the session asks for the cast: dim until ticked, the whole head is the tick.
+  .speaker-head.candidate {
+    cursor: pointer;
+    opacity: 0.6;
+
+    &[data-picked='true'] {
+      opacity: 1;
+    }
+
+    &:hover,
+    &:focus-visible {
+      opacity: 1;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--color-focus);
+      outline-offset: -2px;
+    }
+  }
+
+  .candidate-mark {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-left: auto;
+    border: 1.5px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-accent-contrast);
+
+    svg {
+      width: 0.8rem;
+      height: 0.8rem;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+  }
+
+  .candidate[role='radio'] .candidate-mark {
+    border-radius: var(--radius-pill);
+  }
+
+  .candidate[data-picked='true'] .candidate-mark {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+  }
+
   // The session asks for this head's input: accent ring and a short pulse.
   .vis-label.asked {
     box-shadow: inset 3px 0 0 var(--color-accent);
