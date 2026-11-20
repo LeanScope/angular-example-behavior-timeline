@@ -120,12 +120,19 @@ answers "does not know this session".
 
 ### The choreo's inputs land in the app
 
-The session's chat (the choreo's director, e.g. "Thomas") shows in the agent server's support
+The session's chat (the guide, e.g. "Thomas") shows in the agent server's support
 widget: a small window over the app that can be collapsed, dragged and resized. It loads from
 `environment.leanscope.agentUiUrl`; leave that empty for no widget. It takes the theme LeanScope
 opened the app with (`?theme=`), and while the session asks for an input, the minimized widget
-sits next to the place where it is answered. What the agent server still has to add for the widget
-is in [docs/agent-server-widget-plan.md](docs/agent-server-widget-plan.md).
+sits next to the place where it is answered. While the guide only explains, it sits at its home
+position.
+
+The guide leads through the process in chapters (`src/app/features/guide/`): each chapter is a
+choreo, run as a session of its own, and when one reaches its authored end the next one starts
+and the widget follows. The first chapter is `LEANSCOPE_CHOREO_SCENARIO_GUID` (the data basis:
+documents, moderator, participants); the second is `APP_DIRECTOR_CHOREO_GUID` (one director
+instruction per turn of the discussion; optional). The chapters reference the same 🍱 Inventory,
+so the cast picked in the first is there in the second.
 
 When the session asks for an input the app has a place for, the app goes there and highlights it.
 The input is recognised by its key, the facet's `key` or the override on its relationship (see

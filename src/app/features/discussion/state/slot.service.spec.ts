@@ -78,6 +78,36 @@ describe('SlotService', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
+  it('goes to the timeline for the director\'s instruction, whatever else its form asks for', () => {
+    const { ui, pendingQuestion, navigate } = setup();
+    pendingQuestion.set({ guid: 'q5', fieldKeys: ['leadActor', 'innerVoice', 'conversation'], required: [] });
+    TestBed.tick();
+    expect(ui.askedPlace()).toBe('director');
+    expect(navigate).toHaveBeenLastCalledWith([], { queryParams: { view: 'discussion' }, queryParamsHandling: 'merge' });
+  });
+
+  it('skips an asked document that is optional, with an empty answer', async () => {
+    const { slots, session, pendingQuestion } = setup();
+    pendingQuestion.set(fileQuestion('q6', 'screener'));
+    TestBed.tick();
+    expect(slots.askedOptional()).toBe(true);
+    expect(await slots.skip()).toBe(true);
+    expect(session.submit).toHaveBeenCalledWith({});
+  });
+
+  it('offers no skip for a required document, nor for the cast', async () => {
+    const { slots, session, pendingQuestion } = setup();
+    pendingQuestion.set({ ...fileQuestion('q7', 'brief'), required: ['brief'] });
+    TestBed.tick();
+    expect(slots.askedOptional()).toBe(false);
+    expect(await slots.skip()).toBe(false);
+
+    pendingQuestion.set({ guid: 'q8', fieldKeys: ['participants'], required: [] });
+    TestBed.tick();
+    expect(slots.askedOptional()).toBe(false);
+    expect(session.submit).not.toHaveBeenCalled();
+  });
+
   it('does nothing for questions the app has no place for', () => {
     const { ui, pendingQuestion, navigate } = setup();
     pendingQuestion.set({ guid: 'q4', fieldKeys: ['message'], required: [] });

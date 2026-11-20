@@ -31,6 +31,8 @@ const STIMULI = 'image/*,application/pdf';
       [accept]="documents"
       [jobs]="jobsOf()('study-brief')"
       [asked]="askedFor('study-brief')"
+      [skippable]="asked()?.optional ?? false"
+      (skip)="skipped.emit()"
       (files)="dropped.emit({ zone: 'study-brief', files: $event })"
       (dismiss)="dismiss.emit($event)"
     />
@@ -123,6 +125,8 @@ const STIMULI = 'image/*,application/pdf';
         [accept]="documents"
         [jobs]="jobsOf()('interview-guide')"
         [asked]="askedFor('interview-guide')"
+        [skippable]="asked()?.optional ?? false"
+        (skip)="skipped.emit()"
         (files)="dropped.emit({ zone: 'interview-guide', files: $event })"
         (dismiss)="dismiss.emit($event)"
       />
@@ -143,6 +147,8 @@ const STIMULI = 'image/*,application/pdf';
         [accept]="documents"
         [jobs]="jobsOf()('screener')"
         [asked]="askedFor('screener')"
+        [skippable]="asked()?.optional ?? false"
+        (skip)="skipped.emit()"
         (files)="dropped.emit({ zone: 'screener', files: $event })"
         (dismiss)="dismiss.emit($event)"
       />
@@ -162,6 +168,8 @@ const STIMULI = 'image/*,application/pdf';
         [multiple]="true"
         [jobs]="jobsOf()('stimulus')"
         [asked]="askedFor('stimulus')"
+        [skippable]="asked()?.optional ?? false"
+        (skip)="skipped.emit()"
         (files)="dropped.emit({ zone: 'stimulus', files: $event })"
         (dismiss)="dismiss.emit($event)"
       >
@@ -358,7 +366,7 @@ export class StudyView {
   readonly study = input.required<Study>();
   readonly jobsOf = input.required<(zone: Zone) => IngestJob[]>();
   /** The zone whose document the session asks for right now, and what it said. */
-  readonly asked = input<{ zone: Zone; text: string } | null>(null);
+  readonly asked = input<{ zone: Zone; text: string; optional?: boolean } | null>(null);
   /**
    * The recorded discussions of the connected repository to choose from: `null` while they are
    * read, `undefined` when no repository is connected (the card is then left out).
@@ -373,6 +381,8 @@ export class StudyView {
   protected readonly chosen = computed(() => this.loadingRecording() ?? this.currentRecording());
   readonly dropped = output<{ zone: Zone; files: File[] }>();
   readonly dismiss = output<number>();
+  /** "Überspringen" on the asked zone: the session goes on without that document. */
+  readonly skipped = output<void>();
   readonly recordingPicked = output<string>();
   /** "Keine Aufzeichnung": the recording is taken away again, with all it brought. */
   readonly recordingCleared = output<void>();

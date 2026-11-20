@@ -7,6 +7,7 @@ import type {
   HistoryResponse,
   PendingQuestion,
   PendingStep,
+  SessionConfig,
   SessionEndingFrame,
   SessionRequest,
   SessionResponse,
@@ -47,6 +48,7 @@ export type SessionState =
  *   continue() → POST …/continue: releases a transition a choreo without autoTransition parked
  *   speak()    → POST …/speak: a step of a recorded conversation, spoken in its persona's voice
  *   cancelSpeech() → DELETE …/speak: supersedes everything speak() asked for
+ *   sessionConfig() → GET …/config: which choreo the session runs (e.g. one it was attached to)
  *   runQuery() → POST /api/v1/queries/<guid>, a query an author published in LeanScope
  *
  * Use this service rather than calling the API from components.
@@ -243,6 +245,13 @@ export class LeanScopeSessionService {
   async cancelSpeech(): Promise<boolean> {
     const res = await this.call('/speak', { method: 'DELETE' });
     return !!res?.ok;
+  }
+
+  /** Which choreo the session runs and where it records (`GET …/config`); null when unknown. */
+  async sessionConfig(): Promise<SessionConfig | null> {
+    const res = await this.call('/config');
+    if (!res?.ok) return null;
+    return (await res.json().catch(() => null)) as SessionConfig | null;
   }
 
   /** Answers the pending question. `answer` matches `pendingQuestion().schema`. */

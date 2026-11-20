@@ -1,5 +1,5 @@
 import type { PendingQuestion, Step } from '../../../leanscope/agent-server.types';
-import { castFromSlots, personaAnswer, personaChoices, slotOf } from './slots';
+import { castFromSlots, personaAnswer, personaChoices, slotOf, withRememberedCast } from './slots';
 
 /** One facet behind several slots: only the key tells them apart. */
 const DOCUMENT_FACET = 'f9c9d201-8669-46ce-9fb4-bcbdcbbdeb14';
@@ -121,5 +121,31 @@ describe('castFromSlots', () => {
 
   it('is not slotted for a session without known slots', () => {
     expect(castFromSlots([step('a', 'Hallo')]).slotted).toBe(false);
+  });
+});
+
+describe('withRememberedCast', () => {
+  const m = '11111111-1111-4111-8111-111111111111';
+  const p1 = '22222222-2222-4222-8222-222222222222';
+  const p2 = '33333333-3333-4333-8333-333333333333';
+  const open = castFromSlots([]);
+
+  it('takes the roles the session does not answer from the remembered answers', () => {
+    const cast = withRememberedCast(open, { moderator: [`"${m}"`], participants: [p1, p2, p1] }, null);
+    expect(cast).toEqual({
+      slotted: true,
+      moderator: m,
+      participants: [p1, p2],
+      answered: { moderator: true, participants: true },
+    });
+  });
+
+  it('leaves a role open while the session asks for it, and keeps the session\'s own answers', () => {
+    const asked = withRememberedCast(open, { moderator: [m], participants: [p1] }, 'moderator');
+    expect(asked.moderator).toBeNull();
+    expect(asked.answered).toEqual({ moderator: false, participants: true });
+
+    const own = { ...open, slotted: true, moderator: p2, answered: { moderator: true, participants: false } };
+    expect(withRememberedCast(own, { moderator: [m] }, null)).toBe(own);
   });
 });

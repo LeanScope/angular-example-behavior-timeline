@@ -10,8 +10,8 @@ import type { DropZone, IngestJob } from './ingest.service';
  * The choreo's input slots, answered where the app has a place for them.
  *
  * When the discussion session asks for a slot the app knows (by facet guid, see `slots.ts`), the
- * app goes there (the "Studie" view for documents, the timeline for the cast) and highlights the
- * place until it is answered. A document dropped on its zone answers the slot; one dropped before
+ * app goes there (the "Studie" view for documents, the timeline for the cast and for the director's
+ * instruction) and highlights the place until it is answered. A document dropped on its zone answers the slot; one dropped before
  * the session asks for it is held and goes in as soon as it does, without going there.
  */
 @Injectable()
@@ -33,6 +33,19 @@ export class SlotService {
   readonly askedText = computed(() => {
     const question = this.session.pendingQuestion();
     return this.asked() ? (question?.question?.trim() ?? '') : '';
+  });
+  /**
+   * The asked slot can be left empty: its question names no required field (the facet's
+   * `required`). The cast is never optional: a discussion needs its people.
+   */
+  readonly askedOptional = computed(() => {
+    const question = this.session.pendingQuestion();
+    if (!question || this.asked()?.kind !== 'zone') return false;
+    const required = new Set([...question.required, ...(question.schema?.required ?? [])]);
+    const keys = question.fieldKeys.length
+      ? question.fieldKeys
+      : Object.keys(question.schema?.properties ?? {});
+    return keys.every((key) => !required.has(key));
   });
   /** Status lines of the documents handed to the session, per zone. */
   readonly jobs = this._jobs.asReadonly();
@@ -86,6 +99,17 @@ export class SlotService {
       this.held.set(zone, { files, job });
       this.update(job, { state: 'reading', message: 'Wird übergeben, sobald danach gefragt wird.' });
     }
+  }
+
+  /** Goes on without the asked, optional document: an empty answer to its question. */
+  async skip(): Promise<boolean> {
+    if (!this.askedOptional()) return false;
+    const place = this.asked();
+    if (place?.kind === 'zone') {
+      const held = this.held.get(place.zone);
+      if (held) this.dismiss(held.job);
+    }
+    return this.session.submit({});
   }
 
   private async submitFiles(zone: DropZone, files: File[], job: number): Promise<void> {

@@ -1,5 +1,42 @@
 # Release notes
 
+## 0.11.0 — 2026-11-20
+
+First step of "Thomas guides the whole process": the guide and its chapters. The director track,
+the turn-by-turn discussion and the personas' state at the cursor follow.
+
+- **The guide leads through the process in chapters** (`src/app/features/guide/`). A chapter is a
+  choreo run as a session of its own. The first is `LEANSCOPE_CHOREO_SCENARIO_GUID` (the data
+  basis); the new, optional `APP_DIRECTOR_CHOREO_GUID` is the second (one director instruction
+  per turn). When a chapter reaches its authored end, `GuideService` starts the next one and the
+  support widget follows. Any other end (an error, a stop) leaves the guide where it is. A
+  session LeanScope started (`?sessionToken=`) is recognised by the choreo it runs
+  (`GET …/config`) and goes on the same way.
+- **The support widget belongs to the guide, not to the page.** `GuideService` (root) shows it
+  for its session and hides it over a recording or the player. While a question has a place in
+  the app, the minimized widget sits next to it; while the guide only explains, it sits at its
+  home position.
+- **The cast carries over between chapters.** The chapters reference the same 🍱 Inventory. The
+  guide reads it from the session's `inventory` frames, and the timeline takes moderator and
+  participants from it when the running chapter doesn't ask for them.
+- **The director's instruction has a place.** A form with the field `innerVoice` sends the app to
+  the "Diskussion" view (`SlotPlace` `director`). Until the timeline has its director track, the
+  instruction is answered in the widget (or in the form under the discussion without one).
+- **The widget points to the app for its slots.** The first chapter's six single-field slots are
+  passed as `hostSlots`, so the widget shows a pointer to the app's place instead of a second form.
+- **The guide starts with the app.** Opening the app (signed in, no demo, no recording) starts the
+  first chapter at once; it no longer waits for "Diskussion starten". Taking a recording away
+  brings it back.
+- **An optional document can be skipped.** While the session asks for a document whose question
+  names no required field, its zone offers "Überspringen" (an empty answer). The cast is never
+  optional.
+- **Handed-over files show inside their zone**, not under it, so a long file name no longer runs
+  into the next zone.
+- **The minimized widget no longer covers the neighbouring zone.** Without room beside the asked
+  place it sits above its right end (else below).
+- Generic layer: `LeanScopeSessionService.sessionConfig()`, typed `InventoryFrame` /
+  `InventoryRow` / `SessionConfig`, `hostSlots` on `SupportWidget.show()`.
+
 ## 0.10.3 — 2026-11-17
 
 - **The Wahlplakate demo opens without a login.** `npm run demo:wahlplakate` (APP_DEMO built in)

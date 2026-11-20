@@ -136,6 +136,7 @@
       [loadingRecording]="loadingRecording()"
       (dropped)="drop($event)"
       (dismiss)="dismissJob($event)"
+      (skipped)="skipAsked()"
       (recordingPicked)="pickRecording($event, false)"
       (recordingCleared)="clearRecording()"
     />

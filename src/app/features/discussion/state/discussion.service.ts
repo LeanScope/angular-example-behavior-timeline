@@ -1,7 +1,5 @@
 import {
-  DestroyRef,
   Injectable,
-  Injector,
   computed,
   effect,
   inject,
@@ -9,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { LEANSCOPE_CONFIG } from '../../../leanscope/leanscope.config';
+import { GuideService } from '../../guide/guide.service';
 import { castFromSession } from '../model/cast';
 import { withPortrait } from '../model/portrait-match';
 import {
@@ -16,12 +15,12 @@ import {
   personaAnswer,
   personaChoices,
   slotOf,
+  withRememberedCast,
   type CastRole,
 } from '../model/slots';
 import { toTranscript } from '../model/transcript-mapper';
 import { initialsOf, type Participant, type Transcript } from '../model/study.model';
 import { StudyStore } from './study.store';
-import { createSession } from './session-factory';
 
 /** The cast picked on the timeline: held until the session asks for it, then submitted. */
 export interface CastDraft {
@@ -38,13 +37,14 @@ export interface RosterEntry {
 }
 
 /**
- * The simulated group discussion: one session of the configured choreo
- * (LEANSCOPE_CHOREO_SCENARIO_GUID), shown as a transcript on the timeline.
+ * The simulated group discussion: the guide's session (see `GuideService`; its first chapter is the
+ * configured choreo, LEANSCOPE_CHOREO_SCENARIO_GUID), shown as a transcript on the timeline.
  *
  * Who takes part:
  * - The study's participants (screener), when the study query delivers them.
  * - In a choreo with input slots (it asks for the moderator and the participants), whoever the
- *   answered slots name. Until they are answered, whoever the user picked on the timeline. The
+ *   answered slots name, or else whoever the Inventory remembers from an earlier chapter. Until
+ *   they are answered, whoever the user picked on the timeline. The
  *   choreo's director (who asks for the inputs) speaks in the chat widget, not on the timeline.
  * - Otherwise, e.g. when a recorded choreo is replayed, whoever speaks in the session, named and
  *   portrayed from the session's persona roster (see `castFromSession`).
@@ -53,7 +53,8 @@ export interface RosterEntry {
 export class DiscussionService {
   private readonly store = inject(StudyStore);
   private readonly agentServerUrl = inject(LEANSCOPE_CONFIG).agentServerUrl;
-  readonly session = createSession(inject(Injector));
+  private readonly guide = inject(GuideService);
+  readonly session = this.guide.session;
   /** A recorded discussion shown instead of a live session (demo or imported file). */
   private readonly recorded = signal<Transcript | null>(null);
   /** Speakers that are not participants, by guid (the moderator). */
@@ -68,13 +69,15 @@ export class DiscussionService {
   readonly error = this.session.error;
   readonly running = computed(() => this.recorded() === null && this.session.isActive());
 
-  /** The cast as the session's answered slots name it. */
-  private readonly slotCast = computed(() => castFromSlots(this.session.steps()));
   /** The cast slot the session asks for right now, if any. */
   readonly askedCast = computed<CastRole | null>(() => {
     const place = slotOf(this.session.pendingQuestion());
     return place?.kind === 'cast' ? place.role : null;
   });
+  /** The cast as the session's answered slots name it, or else as the Inventory remembers it. */
+  private readonly slotCast = computed(() =>
+    withRememberedCast(castFromSlots(this.session.steps()), this.guide.answers(), this.askedCast()),
+  );
   /** The session's choreo has input slots this app knows: the cast comes from them. */
   readonly slotted = computed(
     () =>
@@ -160,7 +163,6 @@ export class DiscussionService {
   });
 
   constructor() {
-    inject(DestroyRef).onDestroy(() => this.session.stop());
     effect(() => {
       const asker = this.session.pendingQuestion()?.askedBy;
       if (asker && !this.askers().has(asker)) this.askers.update((all) => new Set([...all, asker]));
@@ -170,7 +172,7 @@ export class DiscussionService {
   start(): Promise<void> {
     this.recorded.set(null);
     this.askers.set(new Set());
-    return this.session.start();
+    return this.guide.start();
   }
 
   /**
@@ -180,7 +182,7 @@ export class DiscussionService {
   async attach(sessionToken: string): Promise<void> {
     this.recorded.set(null);
     this.askers.set(new Set());
-    if (await this.session.attach(sessionToken)) await this.session.begin();
+    await this.guide.attach(sessionToken);
   }
 
   answer(value: Record<string, unknown>): Promise<boolean> {
@@ -238,7 +240,7 @@ export class DiscussionService {
     transcript: Transcript,
     moderator: { guid: string; name: string; imageUrl: string | null; color?: string | null },
   ): void {
-    this.session.stop();
+    this.guide.stop();
     this.names.set({ [moderator.guid]: moderator.name });
     this._moderatorImage.set(moderator.imageUrl);
     this._moderatorColor.set(moderator.color ?? null);

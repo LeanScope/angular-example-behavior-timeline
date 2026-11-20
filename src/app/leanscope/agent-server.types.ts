@@ -187,6 +187,36 @@ export interface ParkedFrame {
 }
 
 /** One parsed frame of `GET …/events`. */
+/**
+ * One remembered answer of the choreo's 🍱 Inventory, as the `inventory` frame lists it. `values`
+ * holds the answer by field key (a list entry as `<key>[<index>]`).
+ */
+export interface InventoryRow {
+  facetGuid: string;
+  label: string;
+  values: Record<string, unknown>;
+  /** The question the answer was given to, when the session saw it asked. */
+  question?: string;
+  schema?: Record<string, unknown>;
+}
+
+/**
+ * The `inventory` frame: every remembered answer, in full, sent again on each change and when a
+ * client connects. Empty for a choreo without an Inventory.
+ */
+export interface InventoryFrame {
+  rows: InventoryRow[];
+}
+
+/** Response of `GET …/config`: which choreo the session runs, and where it records. */
+export interface SessionConfig {
+  choreoRepositoryId?: string;
+  choreoScenarioGuid?: string;
+  sessionRepositoryId?: string;
+  sessionScenarioGuid?: string;
+  autoStart?: boolean;
+}
+
 export interface SseFrame {
   /** The `event:` name, e.g. `step`, `gate`, `session_ending`. `message` when none was sent. */
   event: string;

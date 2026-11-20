@@ -99,6 +99,7 @@ const APP_SETTINGS = [
   'APP_STUDY_QUERY_GUID',
   'APP_PLAYER_CHOREO_GUID',
   'APP_ANALYSIS_CHOREO_GUID',
+  'APP_DIRECTOR_CHOREO_GUID',
 ];
 
 /**
@@ -120,6 +121,7 @@ export function appValues(env = readAppEnv()) {
       studyQueryGuid: env['APP_STUDY_QUERY_GUID'] ?? '',
       playerChoreoGuid: env['APP_PLAYER_CHOREO_GUID'] ?? '',
       analysisChoreoGuid: env['APP_ANALYSIS_CHOREO_GUID'] ?? '',
+      directorChoreoGuid: env['APP_DIRECTOR_CHOREO_GUID'] ?? '',
       demo: env['APP_DEMO'] ?? '',
     },
   };

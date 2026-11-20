@@ -13,6 +13,11 @@ export interface SupportWidgetParams {
   theme?: string | null;
   /** `?themeMode=`, e.g. `follow`. */
   themeMode?: string | null;
+  /**
+   * Field keys the app answers in a place of its own (`?hostSlots=`): for a question that asks
+   * for exactly one of them, the widget shows a pointer to the app instead of its form.
+   */
+  hostSlots?: readonly string[];
 }
 
 /** The widget's own geometry, as it tells the loader (`lsa/support/geometry`). */
@@ -35,8 +40,8 @@ interface Geometry {
  * `anchorTo()` puts the minimized widget next to an element, e.g. the place where the session's
  * current question is answered. The widget cannot be told where to sit yet, so for now the app
  * moves the loader's iframe while the widget is minimized (the widget still draws itself in its
- * box). It also posts `lsa/support/anchor`, for a widget that will place itself (see
- * docs/agent-server-widget-plan.md); once it does, the iframe move can go.
+ * box). It also posts `lsa/support/anchor`, for a widget that will place itself; once it does, the
+ * iframe move can go.
  */
 @Injectable({ providedIn: 'root' })
 export class SupportWidget {
@@ -57,6 +62,7 @@ export class SupportWidget {
     const query = new URLSearchParams({ sessionToken });
     if (params.theme) query.set('theme', params.theme);
     if (params.themeMode) query.set('themeMode', params.themeMode);
+    if (params.hostSlots?.length) query.set('hostSlots', params.hostSlots.join(','));
     query.set('appShell', 'widget');
     const src = `${this.origin}/?${query}`;
     if (src === this.shownSrc) return;
@@ -137,13 +143,20 @@ export class SupportWidget {
       return;
     }
     const rect = this.anchor.getBoundingClientRect();
+    const clamp = (value: number, max: number) => Math.min(Math.max(0, value), Math.max(0, max));
     const right = rect.right + ANCHOR_GAP;
-    const left =
-      right + geometry.width <= win.innerWidth ? right : Math.max(0, rect.left - ANCHOR_GAP - geometry.width);
-    const top = Math.min(
-      Math.max(0, rect.top + rect.height / 2 - geometry.height / 2),
-      win.innerHeight - geometry.height,
-    );
+    let left: number;
+    let top: number;
+    if (right + geometry.width <= win.innerWidth) {
+      // Beside the anchor, at its middle.
+      left = right;
+      top = clamp(rect.top + rect.height / 2 - geometry.height / 2, win.innerHeight - geometry.height);
+    } else {
+      // No room beside it: above its right end (else below), never on top of its neighbour.
+      left = clamp(rect.right - geometry.width, win.innerWidth - geometry.width);
+      const above = rect.top - ANCHOR_GAP - geometry.height;
+      top = above >= 0 ? above : clamp(rect.bottom + ANCHOR_GAP, win.innerHeight - geometry.height);
+    }
     iframe.style.left = `${left}px`;
     iframe.style.top = `${top}px`;
   }

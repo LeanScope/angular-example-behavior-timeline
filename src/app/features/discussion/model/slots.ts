@@ -9,16 +9,23 @@ import type { DropZone } from '../state/ingest.service';
 export type CastRole = 'moderator' | 'participants';
 
 /**
- * Where an input slot of the discussion choreo is answered in this app: a drop zone of the
- * "Studie" view, or a track head of the timeline.
+ * Where an input slot of the guide's choreos is answered in this app: a drop zone of the
+ * "Studie" view, a track head of the timeline, or the timeline's director track (the instruction
+ * for the next turn).
  */
-export type SlotPlace = { kind: 'zone'; zone: DropZone } | { kind: 'cast'; role: CastRole };
+export type SlotPlace =
+  | { kind: 'zone'; zone: DropZone }
+  | { kind: 'cast'; role: CastRole }
+  | { kind: 'director' };
 
 /** The place's id, as `DiscussionUiState.askedPlace` holds it. */
-export type PlaceId = DropZone | CastRole;
+export type PlaceId = DropZone | CastRole | 'director';
 
 export const placeId = (place: SlotPlace): PlaceId =>
-  place.kind === 'zone' ? place.zone : place.role;
+  place.kind === 'zone' ? place.zone : place.kind === 'cast' ? place.role : 'director';
+
+/** The field key of a director instruction (the facet "Instruction"). */
+export const INSTRUCTION_KEY = 'innerVoice';
 
 /**
  * The slots this app has a place for, by their key: the field key of the answer, as the facet's
@@ -35,8 +42,12 @@ const SLOTS: Record<string, SlotPlace> = {
   participants: { kind: 'cast', role: 'participants' },
 };
 
-/** The place of a single-field form with these keys, or null. */
+/**
+ * The place of a form with these keys, or null: a single-field form by its key, and the director's
+ * form (speaker, instruction, …) by its instruction field, whatever else it asks for.
+ */
 function placeOfKeys(keys: string[]): SlotPlace | null {
+  if (keys.includes(INSTRUCTION_KEY)) return { kind: 'director' };
   return keys.length === 1 ? (SLOTS[keys[0]] ?? null) : null;
 }
 
@@ -132,11 +143,14 @@ export interface SlotCast {
   answered: Record<CastRole, boolean>;
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
-/** Every guid in an answer value, in order (strings, arrays and entity-ref objects). */
+/**
+ * Every guid in an answer value, in order (strings, arrays and entity-ref objects). A string may
+ * hold the guid as JSON (the Inventory stores `"\"<guid>\""`), so guids are found inside it.
+ */
 function guidsIn(value: unknown): string[] {
-  if (typeof value === 'string') return UUID.test(value.trim()) ? [value.trim()] : [];
+  if (typeof value === 'string') return value.match(UUID) ?? [];
   if (Array.isArray(value)) return value.flatMap(guidsIn);
   if (value && typeof value === 'object') return Object.values(value).flatMap(guidsIn);
   return [];
@@ -176,4 +190,31 @@ export function castFromSlots(steps: Step[]): SlotCast {
     else cast.participants = [...new Set(guids)];
   }
   return cast;
+}
+
+/**
+ * The cast with the roles the session's own steps don't answer taken from the Inventory's
+ * remembered answers (`moderator`, `participants`): a later chapter of the guide asks for neither
+ * again. A role the session asks for right now (`asked`) stays open, whatever is remembered.
+ */
+export function withRememberedCast(
+  cast: SlotCast,
+  answers: Record<string, unknown[]>,
+  asked: CastRole | null,
+): SlotCast {
+  const moderator = guidsIn(answers['moderator'])[0] ?? null;
+  const participants = [...new Set(guidsIn(answers['participants']))];
+  const fill = (role: CastRole, known: boolean) => known && !cast.answered[role] && asked !== role;
+  const fillModerator = fill('moderator', moderator !== null);
+  const fillParticipants = fill('participants', participants.length > 0);
+  if (!fillModerator && !fillParticipants) return cast;
+  return {
+    slotted: true,
+    moderator: fillModerator ? moderator : cast.moderator,
+    participants: fillParticipants ? participants : cast.participants,
+    answered: {
+      moderator: cast.answered.moderator || fillModerator,
+      participants: cast.answered.participants || fillParticipants,
+    },
+  };
 }

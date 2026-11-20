@@ -19,6 +19,7 @@ import { DsButton, DsIcon, DsStatus, type DsStatusState } from '../../design-sys
 import { LEANSCOPE_CONFIG, missingConfig } from '../../leanscope/leanscope.config';
 import { RepositoryResourcesService } from '../../leanscope/repository-resources.service';
 import { SupportWidget } from '../../leanscope/ui/support-widget';
+import { GuideService } from '../guide/guide.service';
 import { APP_ENV, missingAppEnv } from '../app-env';
 import { AnalysisService, MAX_QUESTION } from '../analysis/state/analysis.service';
 import { AnalysisView } from '../analysis/ui/analysis-view';
@@ -68,6 +69,9 @@ const BUBBLE_LINE_REM = 1.5;
 /** The bubble's lines outside player mode, and the fewest and most in it. */
 const BUBBLE_LINES = 3;
 const PLAYER_BUBBLE_LINES = { min: 5, max: 14 };
+
+/** The element of the place the session asks for: a drop zone's target or a timeline track head. */
+const ASKED_PLACE = 'app-drop-zone.asked .target, app-multitrack-timeline .vis-label.asked';
 
 const STATUS_LABEL: Record<DsStatusState, string> = {
   demo: 'Demo',
@@ -151,6 +155,7 @@ export class DiscussionPage implements OnInit {
   private readonly injector = inject(Injector);
   private readonly previewFold = viewChild<ElementRef<HTMLElement>>('previewFold');
   private readonly widget = inject(SupportWidget);
+  private readonly guide = inject(GuideService);
   protected readonly resources = inject(RepositoryResourcesService);
   /** Blob URLs of the shown recording's repository files, revoked when another one loads. */
   private fileUrls: string[] = [];
@@ -254,7 +259,9 @@ export class DiscussionPage implements OnInit {
   /** The zone whose document the session asks for, for the "Studie" view to highlight. */
   protected readonly askedZone = computed(() => {
     const place = this.slots.asked();
-    return place?.kind === 'zone' ? { zone: place.zone, text: this.slots.askedText() } : null;
+    return place?.kind === 'zone'
+      ? { zone: place.zone, text: this.slots.askedText(), optional: this.slots.askedOptional() }
+      : null;
   });
   /** The cast the user picks on the timeline, in a choreo that asks for it. */
   protected readonly timelineCast = computed<TimelineCast | null>(() => {
@@ -286,11 +293,17 @@ export class DiscussionPage implements OnInit {
 
   /**
    * The session's question as a form under the discussion: only when it asks for something the
-   * app has no place for, and there is no chat widget that shows it.
+   * app has no place for, and there is no chat widget that shows it. The director's instruction
+   * counts as such for now: the timeline has no director track to answer it on yet.
    */
-  protected readonly showQuestion = computed(
-    () => !!this.discussion.pendingQuestion() && !this.slots.asked() && !this.widget.available,
-  );
+  protected readonly showQuestion = computed(() => {
+    const place = this.slots.asked();
+    return (
+      !!this.discussion.pendingQuestion() &&
+      (!place || place.kind === 'director') &&
+      !this.widget.available
+    );
+  });
 
   constructor() {
     // The breadcrumb of the app shell (if there is one): Home › Gruppendiskussion › <guide>.
@@ -298,37 +311,22 @@ export class DiscussionPage implements OnInit {
     effect(() => shell.status.set(this.status()));
     inject(DestroyRef).onDestroy(() => {
       shell.status.set(null);
-      this.widget.hide();
+      // The guide lives on (it is the app's, not this page's); its session ends with the page.
+      this.guide.suppress(false);
+      this.guide.stop();
     });
-    // The session's chat (the director's questions, everything the app has no place for) shows
-    // in the agent server's support widget.
+    // The guide's chat (the director's questions, everything the app has no place for) shows in
+    // the agent server's support widget, in the theme LeanScope opened the app with. Not on top
+    // of a recording or the player: the guide has no part in those.
+    effect(() => this.guide.setTheme(this.theme(), this.themeMode()));
+    effect(() => this.guide.suppress(this.recorded() || this.player.open()));
+    // The minimized widget sits next to the place where the current question is answered, and
+    // at its home position when there is none (the guide only explains).
     effect(() => {
-      const session = this.discussion.session.session();
-      if (!session?.sessionToken || this.recorded() || this.player.open()) return this.widget.hide();
-      // Attached: the theme LeanScope opened the app with. Own session: the one in its uiUrl.
-      const fromUi = urlParams(session.uiUrl);
-      this.widget.show(session.sessionToken, {
-        theme: this.theme() ?? fromUi.get('theme'),
-        themeMode: this.themeMode() ?? fromUi.get('themeMode'),
-      });
-    });
-    // The minimized widget sits next to the place where the current question is answered.
-    effect((onCleanup) => {
       const place = this.ui.askedPlace();
-      this.currentView();
-      if (!place) return this.widget.anchorTo(null);
       // The place renders after the view switch (and the timeline after its own effects).
-      let frames = 0;
-      let frame = 0;
-      const find = () => {
-        const element = document.querySelector<HTMLElement>(
-          'app-drop-zone.asked .target, app-multitrack-timeline .vis-label.asked',
-        );
-        if (element) this.widget.anchorTo(element);
-        else if (++frames < 30) frame = requestAnimationFrame(find);
-      };
-      find();
-      onCleanup(() => cancelAnimationFrame(frame));
+      this.currentView();
+      this.guide.anchor(place ? ASKED_PLACE : null);
     });
     // Player mode: the preview grows until it fills the room above the strip.
     afterRenderEffect((onCleanup) => {
@@ -384,7 +382,24 @@ export class DiscussionPage implements OnInit {
       if (token) {
         this.ui.cursorTime.set(0);
         void this.discussion.attach(token);
+      } else {
+        // The guide is there from the start: it leads to the discussion, it doesn't wait for one.
+        this.startGuide();
       }
+    }
+  }
+
+  /** Starts the guide's first chapter, unless it already runs or the setup is incomplete. */
+  private startGuide(): void {
+    if (this.isDemo() || this.missing().length > 0 || this.discussion.session.isActive()) return;
+    this.ui.cursorTime.set(0);
+    void this.discussion.start();
+  }
+
+  /** "Überspringen" on the asked zone. */
+  protected async skipAsked(): Promise<void> {
+    if (!(await this.slots.skip())) {
+      this.notice.set(this.discussion.error() ?? 'Die Frage konnte nicht übersprungen werden.');
     }
   }
 
@@ -531,7 +546,10 @@ export class DiscussionPage implements OnInit {
     this.discussion.clearRecorded();
     this.store.load(EMPTY_STUDY);
     void this.store.refresh();
-    void this.router.navigate([], { queryParams: { recording: null }, queryParamsHandling: 'merge' });
+    // Without the recording the guide is back, from its first chapter.
+    void this.router
+      .navigate([], { queryParams: { recording: null }, queryParamsHandling: 'merge' })
+      .then(() => this.startGuide());
   }
 
   /**
@@ -721,15 +739,6 @@ export class DiscussionPage implements OnInit {
     link.download = `${title.replace(/[^\p{L}\p{N} _-]+/gu, '').trim() || 'transkript'}.vtt`;
     link.click();
     setTimeout(() => URL.revokeObjectURL(url));
-  }
-}
-
-/** The query parameters of a URL, empty for none or an invalid one. */
-function urlParams(url: string | undefined): URLSearchParams {
-  try {
-    return new URL(url ?? '').searchParams;
-  } catch {
-    return new URLSearchParams();
   }
 }
 

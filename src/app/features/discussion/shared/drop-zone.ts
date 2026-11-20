@@ -20,7 +20,8 @@ import type { IngestJob } from '../state/ingest.service';
  * The question itself shows in the chat widget's handle, next to the zone (see `SupportWidget`).
  *
  * `locked` takes no documents: `'read-only'` shows what something else filled it with (a
- * recording), `'disabled'` is a zone that has no say right now. `busy` says what is being read
+ * recording), `'disabled'` is a zone that has no say right now. `skippable` offers "Überspringen"
+ * while the zone is asked for a document the session can do without. `busy` says what is being read
  * into the zone, with the brand's busy line, in place of the hint.
  */
 @Component({
@@ -56,26 +57,32 @@ import type { IngestJob } from '../state/ingest.service';
         [disabled]="locked() !== null"
         (change)="pick($event)"
       />
+      <!-- Inside the zone: what was handed over, and the way past a document that is optional. -->
+      @if (jobs().length || (asked() !== null && skippable())) {
+        <span class="inside" (click)="$event.preventDefault()">
+          @for (job of jobs(); track job.id) {
+            <span class="job" [attr.data-state]="job.state" role="status">
+              <span class="files">{{ job.fileNames.join(', ') }}</span>
+              <span class="message">{{ job.message }}</span>
+              @if (job.state === 'done' || job.state === 'error') {
+                <button type="button" class="dismiss" aria-label="Meldung schließen" (click)="dismiss.emit(job.id)">
+                  <ds-icon name="close" />
+                </button>
+              }
+            </span>
+          }
+          @if (asked() !== null && skippable()) {
+            <button type="button" class="skip" (click)="skip.emit()">Überspringen</button>
+          }
+        </span>
+      }
     </label>
-    @for (job of jobs(); track job.id) {
-      <p class="job" [attr.data-state]="job.state" role="status">
-        <span class="files">{{ job.fileNames.join(', ') }}</span>
-        <span class="message">{{ job.message }}</span>
-        @if (job.state === 'done' || job.state === 'error') {
-          <button type="button" class="dismiss" aria-label="Meldung schließen" (click)="dismiss.emit(job.id)">
-            <ds-icon name="close" />
-          </button>
-        }
-      </p>
-    }
   `,
   styles: `
     :host {
       display: grid;
-      /* The target fills the zone's height (zones in a row are equally high); status lines follow. */
+      /* The target fills the zone's height (zones in a row are equally high). */
       grid-template-rows: 1fr;
-      grid-auto-rows: auto;
-      gap: var(--space-2);
       /* A long file name wraps instead of widening the zone beyond its grid cell. */
       min-width: 0;
     }
@@ -165,6 +172,26 @@ import type { IngestJob } from '../state/ingest.service';
       outline: 2px solid var(--color-focus);
       outline-offset: 2px;
     }
+    /* A full row at the zone's foot. A click here is not a click on the file picker. */
+    .inside {
+      display: grid;
+      flex-basis: 100%;
+      gap: var(--space-2);
+      min-width: 0;
+      cursor: default;
+    }
+    .skip {
+      justify-self: start;
+      padding: var(--space-1) var(--space-3);
+      border: 1px solid var(--color-accent);
+      border-radius: var(--radius-pill);
+      background: var(--color-surface);
+      color: var(--color-accent);
+      font: inherit;
+      font-size: var(--text-sm);
+      font-weight: 600;
+      cursor: pointer;
+    }
     .job {
       display: flex;
       gap: var(--space-2);
@@ -173,6 +200,7 @@ import type { IngestJob } from '../state/ingest.service';
       padding: var(--space-1) var(--space-3);
       border-radius: var(--radius-sm);
       background: var(--color-surface-sunken);
+      color: var(--color-text);
       font-size: var(--text-xs);
     }
     .job[data-state='error'] {
@@ -229,8 +257,11 @@ export class DropZone {
   readonly busy = input<string | null>(null);
   /** What the session said when asking for this zone's document; null when it doesn't ask. */
   readonly asked = input<string | null>(null);
+  /** The asked document is optional: the zone offers to go on without it. */
+  readonly skippable = input(false);
   readonly files = output<File[]>();
   readonly dismiss = output<number>();
+  readonly skip = output<void>();
 
   protected readonly over = signal(false);
 
