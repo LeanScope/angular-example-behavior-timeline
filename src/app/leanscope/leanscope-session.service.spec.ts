@@ -75,6 +75,10 @@ function fakeServer() {
       if (stepGuid === 'silent') return json({ error: { code: 'voiceless', message: 'no voice' } }, 422);
       return json({ requestId: requestId ?? 'made-up' }, 202);
     }
+    if (method === 'DELETE' && url === `${CONTROLLER}/inventory`)
+      return json({ cleared: ['offer', 'participants'], deletedFiles: 1, rewindsTo: 'a' });
+    if (method === 'DELETE' && url === `${CONTROLLER}/inventory?key=offer&key=a%20b`)
+      return json({ error: { code: 'busy', message: 'a turn is running' } }, 409);
     if (method === 'DELETE' && url === `${CONTROLLER}/speak`) return json({ cancelled: true }, 202);
     return new Response('not found', { status: 404 });
   });
@@ -322,6 +326,26 @@ describe('LeanScopeSessionService', () => {
   it('cannot speak without a session', async () => {
     const { service } = setup();
     expect(await service.speak('s1')).toEqual({ ok: false, status: 0 });
+  });
+
+  it('forgets what the Inventory keeps, for all keys or the named ones', async () => {
+    const { service } = setup();
+    expect(await service.resetInventory()).toEqual({ ok: false, status: 0 });
+    await service.start();
+
+    expect(await service.resetInventory()).toEqual({
+      ok: true,
+      cleared: ['offer', 'participants'],
+      deletedFiles: 1,
+      rewindsTo: 'a',
+    });
+    // The server's refusal comes back with its reason.
+    expect(await service.resetInventory(['offer', 'a b'])).toEqual({
+      ok: false,
+      status: 409,
+      code: 'busy',
+      message: 'a turn is running',
+    });
   });
 
   it('takes the last turn back and follows the conversation the server names', async () => {

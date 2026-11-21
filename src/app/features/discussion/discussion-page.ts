@@ -487,19 +487,54 @@ export class DiscussionPage implements OnInit {
     }
   }
 
-  /** "Tour starten": the guide starts over at its first chapter, with a new session. */
-  protected restartGuide(): void {
-    if (this.recorded() || this.missing().length > 0) return;
-    this.ui.cursorTime.set(0);
-    this.store.showHanded([]);
-    // Say what happens: a new session, in which the stored data basis is not asked for again.
-    const kept = (Object.keys(this.basis()) as DropZone[]).map((zone) => ZONE_LABEL[zone]);
-    this.notice.set(
-      kept.length
-        ? `Die Tour beginnt neu. Bereits gespeichert und daher nicht erneut erfragt: ${kept.join(', ')}. Zum erneuten Abfragen die gespeicherten Antworten im Inventory löschen.`
-        : 'Die Tour beginnt neu: Thomas startet eine neue Sitzung.',
-    );
-    void this.guide.restart();
+  /** The tour is being reset. */
+  protected readonly busy = signal(false);
+  /** "Tour zurücksetzen" asks for confirmation in the Studie view. */
+  protected readonly confirmingReset = signal(false);
+  /** The tour can be reset: no recording shown, setup complete. */
+  private readonly canRestart = computed(() => !this.recorded() && this.missing().length === 0);
+  /**
+   * Something of the data basis is stored (in the repository, in the session's Inventory, or
+   * handed over in this browser), so a reset deletes it before the tour starts over.
+   */
+  private readonly hasData = computed(
+    () =>
+      Object.keys(this.basis()).length > 0 ||
+      Object.keys(this.guide.answers()).length > 0 ||
+      Object.keys(this.guide.files()).length > 0,
+  );
+
+  /** "Tour zurücksetzen" in the timeline's ⋮ menu: confirmed in the Studie view. */
+  protected askReset(): void {
+    if (!this.canRestart() || this.busy()) return;
+    this.show('study');
+    this.confirmingReset.set(true);
+  }
+
+  /**
+   * "Tour zurücksetzen", confirmed: the stored data basis is deleted on the agent server (kept
+   * answers and the files only they listed), and the guide starts over at its first choreo and
+   * asks for everything again. With nothing stored it just starts over.
+   */
+  protected async resetTour(): Promise<void> {
+    if (!this.canRestart() || this.busy()) return;
+    this.busy.set(true);
+    this.notice.set(null);
+    try {
+      if (this.hasData()) {
+        const outcome = await this.guide.resetData();
+        if (!outcome.ok) return this.notice.set(resetFailure(outcome));
+      } else {
+        await this.guide.restart();
+      }
+      this.ui.cursorTime.set(0);
+      this.store.showHanded([]);
+      this.store.showKept([]);
+      this.basis.set({});
+      void this.loadBasis();
+    } finally {
+      this.busy.set(false);
+    }
   }
 
   /** "Überspringen" on the asked zone. */
@@ -541,7 +576,7 @@ export class DiscussionPage implements OnInit {
     }
     if (this.guide.pastFirst()) {
       // The guide has moved on: nothing asks for a document any more.
-      this.notice.set(`Die Datengrundlage steht: ${ZONE_LABEL[event.zone]} wird nicht mehr angenommen. „Tour starten“ fängt von vorn an.`);
+      this.notice.set(`Die Datengrundlage steht: ${ZONE_LABEL[event.zone]} wird nicht mehr angenommen. „Tour zurücksetzen“ fängt von vorn an.`);
       return;
     }
     this.notice.set(null);
@@ -565,7 +600,7 @@ export class DiscussionPage implements OnInit {
 
   protected dismissJob(id: number): void {
     if (id === REMEMBERED_JOB) {
-      this.notice.set('Eine vor dem Neuladen übergebene Datei lässt sich hier nicht mehr entfernen. „Tour starten“ fängt von vorn an.');
+      this.notice.set('Eine vor dem Neuladen übergebene Datei lässt sich hier nicht mehr entfernen. „Tour zurücksetzen“ fängt von vorn an.');
       return;
     }
     this.ingest.dismiss(id);
@@ -858,4 +893,19 @@ export class DiscussionPage implements OnInit {
 
 function reason(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
+}
+
+/** Why a reset of the data basis did not happen, for the notice. */
+function resetFailure(outcome: { status: number; code?: string; message?: string }): string {
+  if (outcome.code === 'busy') {
+    return 'Thomas ist gerade beschäftigt, die Daten wurden nicht zurückgesetzt. Bitte gleich noch einmal versuchen.';
+  }
+  if (outcome.code === 'no-inventory') {
+    return 'Dieser Choreo merkt sich nichts in einem Inventory: es gibt nichts zurückzusetzen.';
+  }
+  if (outcome.status === 404 || outcome.status === 405) {
+    return 'Der Agent Server kennt das Zurücksetzen nicht (ab Version 0.168.0) oder die Sitzung ist nicht mehr erreichbar.';
+  }
+  if (outcome.status === 0) return 'Der Agent Server war nicht erreichbar, die Daten wurden nicht zurückgesetzt.';
+  return `Die Daten wurden nicht zurückgesetzt: ${outcome.message ?? `Fehler ${outcome.status}`}.`;
 }

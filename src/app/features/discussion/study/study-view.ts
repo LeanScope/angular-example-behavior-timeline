@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, input, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, input, model, output } from '@angular/core';
 import { DsButton, DsIcon } from '../../../design-system';
 import { LoadingLine } from '../../analysis/ui/loading-line/loading-line';
 import type { RecordingEntry } from '../model/repository-recording';
@@ -24,16 +24,28 @@ const STIMULI = 'image/*,application/pdf';
         stehen der ganzen Simulation zur Verfügung.
       </p>
       @if (canRestart()) {
-        <button
-          ds-button
-          variant="ghost"
-          type="button"
-          class="restart"
-          title="Thomas beginnt die Tour von vorn, mit einer neuen Sitzung"
-          (click)="restart.emit()"
-        >
-          <ds-icon name="refresh" /> Tour starten
-        </button>
+        <div class="actions">
+          @if (busy()) {
+            <span class="busy end" role="status"><app-loading-line /> Tour wird zurückgesetzt …</span>
+          } @else if (confirmingReset()) {
+            <span class="confirm end" role="group" aria-label="Tour zurücksetzen">
+              <span>Datengrundlage zurücksetzen, um Tour neu zu starten?</span>
+              <button ds-button type="button" (click)="confirmingReset.set(false); reset.emit()">Zurücksetzen</button>
+              <button ds-button variant="ghost" type="button" (click)="confirmingReset.set(false)">Abbrechen</button>
+            </span>
+          } @else {
+            <button
+              ds-button
+              variant="ghost"
+              type="button"
+              class="end"
+              title="Löscht die gespeicherte Datengrundlage (Dokumente, Moderation, Teilnehmende); Thomas beginnt die Tour neu"
+              (click)="confirmingReset.set(true)"
+            >
+              <ds-icon name="refresh" /> Tour zurücksetzen
+            </button>
+          }
+        </div>
       }
     </div>
 
@@ -221,8 +233,37 @@ const STIMULI = 'image/*,application/pdf';
       color: var(--color-muted);
       font-size: var(--text-lg);
     }
-    .intro .restart {
+    .intro .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2) var(--space-4);
+      align-items: center;
       margin-top: var(--space-3);
+    }
+    .intro .actions .end {
+      margin-left: auto;
+    }
+    .intro .busy {
+      display: inline-flex;
+      gap: var(--space-2);
+      align-items: center;
+      min-height: 2.25rem;
+      color: var(--color-accent);
+      font-weight: 600;
+    }
+    .intro .busy app-loading-line {
+      width: 3rem;
+    }
+    .intro .confirm {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      align-items: center;
+      padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      font-size: var(--text-sm);
     }
     .cards {
       display: grid;
@@ -388,10 +429,14 @@ export class StudyView {
    * they hold and take nothing more.
    */
   readonly closed = input(false);
-  /** "Tour starten" is on offer: the guide can start over (no recording, setup complete). */
+  /** "Tour zurücksetzen" is on offer: the guide can start over (no recording, setup complete). */
   readonly canRestart = input(false);
-  /** "Tour starten": the guide starts over at its first choreo. */
-  readonly restart = output<void>();
+  /** "Zurücksetzen", confirmed: the stored data basis is deleted and the tour starts over. */
+  readonly reset = output<void>();
+  /** The tour is being reset: a busy indicator stands in for the button. */
+  readonly busy = input(false);
+  /** "Tour zurücksetzen" asks for confirmation in place (also opened from the timeline's ⋮ menu). */
+  readonly confirmingReset = model(false);
   /**
    * The recorded discussions of the connected repository to choose from: `null` while they are
    * read, `undefined` when no repository is connected (the card is then left out).

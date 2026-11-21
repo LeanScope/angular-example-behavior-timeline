@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import type {
   EndReason,
+  InventoryResetOutcome,
   SessionResponse,
   SseFrame,
 } from '../../leanscope/agent-server.types';
@@ -11,7 +12,8 @@ import { SupportWidget } from '../../leanscope/ui/support-widget';
 import { APP_ENV, EMPTY_APP_ENV } from '../app-env';
 import { GUIDE_SESSION_FACTORY, GuideService } from './guide.service';
 
-function setup(options: { director?: string; gone?: string } = {}) {
+function setup(options: { director?: string; gone?: string; resets?: InventoryResetOutcome[] } = {}) {
+  const resets = [...(options.resets ?? [])];
   const state = signal<SessionState>('idle');
   const endReason = signal<EndReason | null>(null);
   const sessionOf = signal<SessionResponse | null>(null);
@@ -45,6 +47,7 @@ function setup(options: { director?: string; gone?: string } = {}) {
       sessionOf.set({ sessionId: '', sessionScenarioGuid: '', sessionToken: token, controllerUrl: '', uiUrl: '', markdown: '' });
       return true;
     }),
+    resetInventory: vi.fn(async (): Promise<InventoryResetOutcome> => resets.shift() ?? { ok: true, cleared: ['offer'] }),
     sessionConfig: vi.fn(async () => ({ choreoScenarioGuid: 'entry' })),
     begin: vi.fn(async () => undefined),
     stop: vi.fn(() => {
@@ -198,5 +201,39 @@ describe('GuideService', () => {
     await fresh.guide.restart();
     expect(fresh.session.start).toHaveBeenCalledTimes(1);
     expect(fresh.session.start).toHaveBeenCalledWith({ choreoScenarioGuid: 'entry' });
+  });
+
+  it('resets the data basis on the live session, then begins anew at the first choreo', async () => {
+    const { guide, session, end, frame } = setup();
+    await guide.start();
+    frame('inventory', { rows: [{ coordinate: 'participants', values: ['p1'] }] });
+    end('terminal');
+    await vi.waitFor(() => expect(guide.choreo()).toBe('director'));
+
+    expect(await guide.resetData()).toEqual({ ok: true, cleared: ['offer'] });
+    expect(session.resetInventory).toHaveBeenCalledTimes(1);
+    expect(session.start).toHaveBeenLastCalledWith({ choreoScenarioGuid: 'entry' });
+    expect(guide.choreo()).toBe('entry');
+    expect(guide.answers()).toEqual({});
+  });
+
+  it('starts a session to reset with when none is live, and waits while it is busy', async () => {
+    const busy: InventoryResetOutcome = { ok: false, status: 409, code: 'busy' };
+    const { guide, session } = setup({ resets: [busy, busy] });
+    guide.resetWaitMs = 0;
+
+    expect((await guide.resetData()).ok).toBe(true);
+    expect(session.resetInventory).toHaveBeenCalledTimes(3);
+    // One session to call the reset on, one for the tour that begins anew.
+    expect(session.start).toHaveBeenCalledTimes(2);
+  });
+
+  it('leaves everything as it is when the reset is refused', async () => {
+    const { guide, session } = setup({ resets: [{ ok: false, status: 404, code: 'no-inventory' }] });
+    await guide.start();
+
+    expect(await guide.resetData()).toEqual({ ok: false, status: 404, code: 'no-inventory' });
+    expect(session.start).toHaveBeenCalledTimes(1);
+    expect(guide.choreo()).toBe('entry');
   });
 });

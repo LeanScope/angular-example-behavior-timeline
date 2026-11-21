@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.11.1 — 2026-11-21
+
+- **"Tour zurücksetzen"** (in the "Studie" view, right-aligned, and in the timeline's ⋮ menu)
+  replaces "Tour starten". It asks in place ("Datengrundlage zurücksetzen, um Tour neu zu
+  starten?"), deletes the stored data basis through the agent server's
+  `DELETE …/sessions/<token>/inventory` (`LeanScopeSessionService.resetInventory()`, agent
+  server 0.168.0 or later; the server deletes the kept answers and the files only they listed),
+  and starts the tour over, showing the busy line meanwhile. The app still holds no secret.
+  While Thomas is busy with a turn the reset waits and tries again for a few seconds.
+- Cast picking: participants tick in square boxes, the moderator in a round one; candidate rows
+  are no longer dimmed; "Übernehmen" sits at the right end of its head. vis-timeline's invisible
+  loading overlay could stay over the timeline after start and swallow every click on the
+  tracks until the window was resized; it is now taken away and never catches the pointer. Persona names are remembered across the guide's sessions, so the
+  cast no longer flashes up as "Unbekannt" when the next choreo starts.
+
 ## 0.11.0 — 2026-11-20
 
 First step of "Thomas guides the whole process": the guide, its choreos, and answering them in

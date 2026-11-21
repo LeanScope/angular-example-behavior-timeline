@@ -345,6 +345,11 @@ app-multitrack-timeline {
     border-color: var(--chart-grid, var(--color-border));
   }
 
+  // vis-timeline's empty overlay while it starts: never in the way of a click (see `create`).
+  .vis-loading-screen {
+    pointer-events: none;
+  }
+
   // The line follows the mouse, so it must never catch the pointer: dragging pans the timeline.
   .vis-custom-time.cursor {
     width: 2px;
@@ -610,7 +615,14 @@ app-multitrack-timeline {
     opacity: 1;
   }
 
+  // "Übernehmen" sits at the right end of its head.
+  .track-label:has(.cast-submit) {
+    display: flex;
+    width: 100%;
+  }
+
   .cast-submit {
+    margin-left: auto;
     padding: 0.15rem var(--space-2);
     background: var(--color-accent);
     color: var(--color-accent-contrast);
@@ -628,18 +640,17 @@ app-multitrack-timeline {
     }
   }
 
-  // A candidate while the session asks for the cast: dim until ticked, the whole head is the tick.
+  // A candidate while the session asks for the cast: the whole head is the tick box. Full
+  // strength (a dimmed row reads as disabled); the tick mark and a hover tint say it is a choice.
   .speaker-head.candidate {
     cursor: pointer;
-    opacity: 0.6;
 
-    &[data-picked='true'] {
-      opacity: 1;
+    &:hover {
+      background: var(--color-accent-soft);
     }
 
-    &:hover,
-    &:focus-visible {
-      opacity: 1;
+    &:hover .candidate-mark {
+      border-color: var(--color-accent);
     }
 
     &:focus-visible {
@@ -656,8 +667,10 @@ app-multitrack-timeline {
     width: 1.1rem;
     height: 1.1rem;
     margin-left: auto;
-    border: 1.5px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--color-muted);
+    // A tick box (several may be picked) is square with barely rounded corners; a radio (one of
+    // them, the moderator) is round, see below.
+    border-radius: 0.2rem;
     color: var(--color-accent-contrast);
 
     svg {

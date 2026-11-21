@@ -135,7 +135,7 @@ one director instruction per turn of the discussion; optional). The choreos refe
 🍱 Inventory, so the cast picked in the first is there in the second.
 
 The guide starts with the app and rejoins rather than restarts: the browser remembers the last
-session's scenario (an id, not a token), and the agent server hands that session back. "Tour starten" in the timeline's ⋮ menu starts over.
+session's scenario (an id, not a token), and the agent server hands that session back. "Tour zurücksetzen" (in the "Studie" view and the timeline's ⋮ menu) deletes the stored data basis (the agent server's `DELETE …/inventory`, 0.168.0 or later) and starts over, so everything is asked again.
 
 An answer given earlier can be taken away again (a file line's ×, or new files dropped on its
 zone): the session is undone back to that question, and what was answered after it goes in again

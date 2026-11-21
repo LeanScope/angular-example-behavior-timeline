@@ -238,6 +238,26 @@ export interface BranchFrame extends UndoState {
   activeChain: string[];
 }
 
+/**
+ * What `DELETE …/inventory` did: the keys whose kept answers were forgotten, how many uploaded
+ * files went with them, and the step the session went back to (none when no reached step had
+ * asked for a cleared key).
+ */
+export interface InventoryReset {
+  cleared: string[];
+  deletedFiles?: number | string[];
+  rewindsTo?: string;
+}
+
+/**
+ * How `resetInventory()` went. `status` is the HTTP status (0 when the server was not reached or
+ * there is no session); `code` is the server's reason, e.g. `busy` (409, a turn is running) or
+ * `no-inventory` (404).
+ */
+export type InventoryResetOutcome =
+  | ({ ok: true } & InventoryReset)
+  | { ok: false; status: number; code?: string; message?: string };
+
 export interface SseFrame {
   /** The `event:` name, e.g. `step`, `gate`, `session_ending`. `message` when none was sent. */
   event: string;

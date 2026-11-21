@@ -6,6 +6,8 @@ import type {
   EndReason,
   GateFrame,
   HistoryResponse,
+  InventoryReset,
+  InventoryResetOutcome,
   PendingQuestion,
   PendingStep,
   SessionConfig,
@@ -51,6 +53,7 @@ export type SessionState =
  *   speak()    → POST …/speak: a step of a recorded conversation, spoken in its persona's voice
  *   cancelSpeech() → DELETE …/speak: supersedes everything speak() asked for
  *   undo() / redo() → POST …/undo, …/redo: takes the last turn back, or restores it
+ *   resetInventory() → DELETE …/inventory: forgets what the choreo's 🍱 Inventory keeps
  *   sessionConfig() → GET …/config: which choreo the session runs (e.g. one it was attached to)
  *   runQuery() → POST /api/v1/queries/<guid>, a query an author published in LeanScope
  *
@@ -269,6 +272,30 @@ export class LeanScopeSessionService {
   async redo(): Promise<boolean> {
     const res = await this.call('/redo', { method: 'POST' });
     return !!res?.ok;
+  }
+
+  /**
+   * Forgets what the session's choreo keeps in its 🍱 Inventory (`DELETE …/inventory`): every
+   * kept answer, or those of `keys`. The files only they listed are deleted; the declared slots
+   * stay. The session goes back to the first step that asked for a cleared key and asks again.
+   * Needs agent server 0.168.0 or later; refused with 409 `busy` while a turn runs.
+   */
+  async resetInventory(keys: readonly string[] = []): Promise<InventoryResetOutcome> {
+    const query = keys.map((key) => `key=${encodeURIComponent(key)}`).join('&');
+    const res = await this.call(`/inventory${query ? `?${query}` : ''}`, { method: 'DELETE' });
+    if (!res) return { ok: false, status: 0 };
+    const body = (await res.json().catch(() => null)) as
+      | (Partial<InventoryReset> & { error?: { code?: string; message?: string } })
+      | null;
+    if (!res.ok) {
+      return { ok: false, status: res.status, code: body?.error?.code, message: body?.error?.message };
+    }
+    return {
+      ok: true,
+      cleared: Array.isArray(body?.cleared) ? body.cleared : [],
+      deletedFiles: body?.deletedFiles,
+      ...(body?.rewindsTo ? { rewindsTo: body.rewindsTo } : {}),
+    };
   }
 
   /** Which choreo the session runs and where it records (`GET …/config`); null when unknown. */

@@ -117,9 +117,9 @@ export class MultitrackTimeline {
   readonly playDisabled = input(false);
   /** The red Play button: starts the discussion, or plays it once there is something to hear. */
   readonly play = output<void>();
-  /** "Diskussion neu starten" in the ⋮ menu is off, e.g. for a recording or while one runs. */
+  /** "Tour zurücksetzen" in the ⋮ menu is off, e.g. for a recording or while a reset runs. */
   readonly restartDisabled = input(false);
-  /** "Diskussion neu starten" in the ⋮ menu. */
+  /** "Tour zurücksetzen" in the ⋮ menu: confirmed in the Studie view. */
   readonly restart = output<void>();
   /** The cast the user can pick here, if any. */
   readonly cast = input<TimelineCast | null>(null);
@@ -427,6 +427,15 @@ export class MultitrackTimeline {
       this.groups as never,
       options,
     );
+    // vis-timeline lays an invisible "loading screen" over itself and takes it away on the first
+    // redraw after its first range change (reported 200 ms late). With nothing redrawing then,
+    // it stayed and swallowed every click on the tracks until the window was resized. Redraw
+    // once the range change is in.
+    const firstRange = () => {
+      timeline.off('rangechanged', firstRange);
+      timeline.redraw();
+    };
+    timeline.on('rangechanged', firstRange);
     timeline.addCustomTime(ms(this.ui.cursorTime()), 'cursor');
     timeline.setCustomTimeTitle('Cursor', 'cursor');
 

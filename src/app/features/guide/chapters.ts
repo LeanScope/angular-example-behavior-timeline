@@ -36,6 +36,7 @@ export function inventoryAnswers(rows: readonly InventoryRow[]): Record<string, 
   for (const row of rows) {
     for (const [coordinate, value] of Object.entries(row.values ?? {})) {
       if (value === null || value === undefined || value === '') continue;
+      if (Array.isArray(value) && value.length === 0) continue;
       const key = coordinate.replace(/\[.*$/, '');
       (answers[key] ??= []).push(...(Array.isArray(value) ? value : [value]));
     }

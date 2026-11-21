@@ -9,7 +9,11 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import type { InventoryFrame, InventoryRow } from '../../leanscope/agent-server.types';
+import type {
+  InventoryFrame,
+  InventoryResetOutcome,
+  InventoryRow,
+} from '../../leanscope/agent-server.types';
 import { LEANSCOPE_CONFIG } from '../../leanscope/leanscope.config';
 import { LeanScopeSessionService } from '../../leanscope/leanscope-session.service';
 import { SupportWidget } from '../../leanscope/ui/support-widget';
@@ -34,6 +38,9 @@ export const GUIDE_SESSION_FACTORY = new InjectionToken<() => LeanScopeSessionSe
 const ANCHOR_FRAMES = 30;
 /** Where the last session is remembered, per repository: ids only, never a token. */
 const REMEMBERED_KEY = 'leanscope-guide-session';
+/** How often a reset is tried again while the session is busy with a turn, and how long between. */
+const RESET_TRIES = 8;
+const RESET_WAIT_MS = 1500;
 
 /** The guide's last session in this browser: which choreo it ran, and its own scenario. */
 interface RememberedSession {
@@ -184,6 +191,35 @@ export class GuideService {
     this.carried.set({});
     this._files.set({});
     return this.start();
+  }
+
+  /**
+   * Forgets the data basis: what the choreos' shared 🍱 Inventory keeps (the agent server deletes
+   * the kept answers and the files only they listed), then begins anew at the first choreo, which
+   * asks for everything again. Without a live session one is started first, because the reset is
+   * a call on a session. While the session is busy with a turn the reset is tried again for a
+   * while. When it fails, nothing changes and the outcome says why.
+   */
+  async resetData(): Promise<InventoryResetOutcome> {
+    if (!this.choreos[0]) return { ok: false, status: 0 };
+    if (!this.live()) await this.start();
+    let outcome = await this.session.resetInventory();
+    for (let tries = 1; !outcome.ok && outcome.status === 409 && outcome.code !== 'unsupported-slot-filling' && tries < RESET_TRIES; tries++) {
+      await new Promise((resolve) => setTimeout(resolve, this.resetWaitMs));
+      // A choreo may have ended meanwhile and handed over: the reset goes to whichever runs now.
+      outcome = await this.session.resetInventory();
+    }
+    if (outcome.ok) await this.restart();
+    return outcome;
+  }
+
+  /** Between two tries of a reset; a test shortens it. */
+  resetWaitMs = RESET_WAIT_MS;
+
+  /** A session is there to call: started and neither ended nor failed. */
+  private live(): boolean {
+    const state = this.session.state();
+    return !!this.session.session()?.sessionToken && state !== 'ended' && state !== 'error';
   }
 
   /**

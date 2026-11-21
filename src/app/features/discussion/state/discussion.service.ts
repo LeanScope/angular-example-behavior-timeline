@@ -7,6 +7,7 @@ import {
   signal,
 } from '@angular/core';
 import { LEANSCOPE_CONFIG } from '../../../leanscope/leanscope.config';
+import type { LeanScopeSessionService } from '../../../leanscope/leanscope-session.service';
 import { GuideService } from '../../guide/guide.service';
 import { castFromSession } from '../model/cast';
 import { withPortrait } from '../model/portrait-match';
@@ -93,6 +94,23 @@ export class DiscussionService {
   readonly castDraft = linkedSignal<CastDraft>(() => {
     const { moderator, participants } = this.slotCast();
     return { moderator, participants };
+  });
+
+  /**
+   * Every persona a session of the guide has named so far, by guid. A new session (the next
+   * choreo, a restart) reports its personas a moment after it starts; until then the cast it
+   * inherited would show as "Unbekannt" without this.
+   */
+  private readonly knownActors = linkedSignal<
+    ReturnType<LeanScopeSessionService['actors']>,
+    Map<string, ReturnType<LeanScopeSessionService['actors']>[number]>
+  >({
+    source: () => this.session.actors(),
+    computation: (actors, previous) => {
+      const known = new Map(previous?.value ?? []);
+      actors.forEach((actor) => known.set(actor.guid, actor));
+      return known;
+    },
   });
 
   /** The session's personas, minus the director(s), with portraits. */
@@ -226,7 +244,9 @@ export class DiscussionService {
     // The moderator does not take part as a participant.
     const listed = role === 'participants' ? base.filter((o) => o.guid !== draft.moderator) : base;
     const known = new Set(listed.map((o) => o.guid));
-    const all = [...listed, ...picked.filter((guid) => !known.has(guid)).map((guid) => this.entry(guid))];
+    const all = [...listed, ...picked.filter((guid) => !known.has(guid)).map((guid) => this.entry(guid))]
+      // A persona offered twice is one row (a row id must be unique on the timeline).
+      .filter((o, i, list) => list.findIndex((other) => other.guid === o.guid) === i);
     return all.map((o) => ({ ...o, picked: picked.includes(o.guid) }));
   }
 
@@ -294,7 +314,7 @@ export class DiscussionService {
 
   /** Name and portrait of a persona of the roster (or the label the question gives it). */
   private entry(guid: string, label?: string): RosterEntry {
-    const actor = this.session.actors().find((a) => a.guid === guid);
+    const actor = this.knownActors().get(guid);
     const name = actor?.name.trim() || label || 'Unbekannt';
     const portrayed = withPortrait(this.agentServerUrl, {
       guid,
