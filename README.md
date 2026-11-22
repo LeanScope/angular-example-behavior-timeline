@@ -159,6 +159,25 @@ The input is recognised by its key, the facet's `key` or the override on its rel
 A document dropped before the session asks for it is handed over as soon as it does. The widget
 shows its own form for the same question; whichever answers first wins.
 
+### The Leitfaden becomes questions
+
+An uploaded Leitfaden (`.md`, `.docx`) is broken down on the agent server by its hosted
+interview-guide worker ("📋 Leitfaden einlesen", `3e3d0d78…`), which the upload step's need
+attaches with `documentKey = document`. It writes one ❔ question resource per question:
+
+```
+📋 <file> ─HAS (listIndex)→ question ─IS→ ❔ Frage {key q_…}   (line = question, description = section)
+```
+
+The root's guid follows from the choreo's 🍱 Inventory (`guideRootGuid(inventory, 'document')`,
+`features/discussion/model/guide-root.ts`), so the app reads it by guid as the signed-in user
+(`model/uploaded-guide.ts`, `StudyStore.refreshGuide()`): when the page opens, and again whenever
+a worker reports. The sidebar and the timeline's "Leitfaden" row show it; the zone's status line
+says how many questions were read in. Re-uploading updates the questions instead of duplicating
+them. To set the worker up in another repository, run
+`scripts/author-interview-guide-worker.ts --repository <id> --scenario <choreo> --step <upload step> --apply`
+in `leanscope-agent-server`.
+
 ## Replay a choreo from the app
 
 You don't need LeanScope Classic to try a choreo. With these values in `.env`, the red Play
@@ -170,8 +189,9 @@ button on the timeline ("Diskussion starten") creates the session itself:
 
 The participants are whoever speaks in the session. Names and portraits come from the session's
 `actors` frame (`LeanScopeSessionService.actors()`), and the first speaker is the moderator.
-`APP_INGEST_CHOREO_GUID` and `APP_STUDY_QUERY_GUID` are only needed for the study: the guide in
-the sidebar, the stimuli, and reading in documents.
+`APP_INGEST_CHOREO_GUID` and `APP_STUDY_QUERY_GUID` are only needed for the separate ingest
+choreo and its study query (brief, screener, stimuli). The Leitfaden in the sidebar does not need
+them: it is read from the questions the interview-guide worker writes (see above).
 
 ## Recordings from the repository
 

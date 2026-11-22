@@ -132,7 +132,7 @@ export class IngestService {
 }
 
 /** A worker's activity frame carries what an n8n worker would PATCH: `summary` and/or `text`. */
-function progressLine(data: unknown): string {
+export function progressLine(data: unknown): string {
   if (!data || typeof data !== 'object') return '';
   const { summary, text } = data as { summary?: unknown; text?: unknown };
   const line = typeof text === 'string' && text ? text : typeof summary === 'string' ? summary : '';

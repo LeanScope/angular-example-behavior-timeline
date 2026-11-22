@@ -1,5 +1,17 @@
 # Release notes
 
+## Unreleased
+
+- **An uploaded Leitfaden becomes the questions in the sidebar and the timeline's "Leitfaden"
+  row.** The agent server's hosted interview-guide worker ("📋 Leitfaden einlesen") is now
+  attached to the upload step of the data-basis choreo (repository 2449, written with
+  `leanscope-agent-server/scripts/author-interview-guide-worker.ts`). It breaks the file down
+  into ❔ question resources under a root whose guid follows from the choreo's 🍱 Inventory. The
+  app reads that graph as the signed-in user (`model/guide-root.ts`, `model/uploaded-guide.ts`,
+  `StudyStore.refreshGuide()`) when the page opens and whenever a worker reports, without
+  `APP_INGEST_CHOREO_GUID` / `APP_STUDY_QUERY_GUID`. The Leitfaden zone's status line says
+  "wird eingelesen …", then how many questions were read in, or that the file is no guide.
+
 ## 0.11.1 — 2026-11-21
 
 - **"Tour zurücksetzen"** (in the "Studie" view, right-aligned, and in the timeline's ⋮ menu)

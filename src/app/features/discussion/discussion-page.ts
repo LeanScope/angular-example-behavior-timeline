@@ -61,7 +61,7 @@ import { PanelroomPreview } from './preview/panelroom-preview';
 import { QuestionSidebar } from './sidebar/question-sidebar';
 import { DiscussionUiState, type DiscussionView } from './state/discussion-ui.state';
 import { DiscussionService } from './state/discussion.service';
-import { IngestService, ZONE_LABEL, type DropZone, type IngestJob } from './state/ingest.service';
+import { IngestService, ZONE_LABEL, progressLine, type DropZone, type IngestJob } from './state/ingest.service';
 import { SlotService } from './state/slot.service';
 import { StudyStore } from './state/study.store';
 import { StudyView } from './study/study-view';
@@ -304,6 +304,12 @@ export class DiscussionPage implements OnInit {
   /** The data basis as the repository keeps it (see `loadBasis`). */
   private readonly basis = signal<DataBasis>({});
   private basisRun = 0;
+  /** The next read of the uploaded Leitfaden, while it waits for the worker's frames to settle. */
+  private guideReadTimer: ReturnType<typeof setTimeout> | null = null;
+  /** How many Leitfaden files the session took in this visit (each is read in by the worker). */
+  private readonly guidesHanded = computed(
+    () => this.slots.jobsOf('interview-guide').filter((j) => j.state === 'done').length,
+  );
   private readonly handedStimuli = computed(() => this.slots.handed().get('stimulus') ?? NO_FILES);
   protected readonly hasClips = computed(() => this.transcript().clips.length > 0);
   /** No discussion can be started: a recording is shown, one runs, or the setup is incomplete. */
@@ -361,6 +367,23 @@ export class DiscussionPage implements OnInit {
         if (files.length === 0 && settled) return;
         this.store.showHanded(files);
       });
+    });
+    // The uploaded Leitfaden, as the agent server's interview-guide worker breaks it down into
+    // question resources: read again whenever a worker reports, and once the session took a file.
+    const offFrames = this.discussion.session.onFrame((frame) => {
+      if (frame.event !== 'activity' && frame.event !== 'worker') return;
+      if (/nothing written/i.test(progressLine(frame.data))) {
+        this.slots.noteZone('interview-guide', 'Übergeben – kein Leitfaden erkannt, keine Fragen eingelesen.');
+      }
+      this.scheduleGuideRead();
+    });
+    inject(DestroyRef).onDestroy(() => {
+      offFrames();
+      if (this.guideReadTimer) clearTimeout(this.guideReadTimer);
+    });
+    effect(() => {
+      if (this.guidesHanded() === 0) return;
+      untracked(() => this.scheduleGuideRead());
     });
     // What the repository keeps of the data basis: read when the guide starts or rejoins, and
     // again once the first choreo has settled it.
@@ -458,6 +481,7 @@ export class DiscussionPage implements OnInit {
   private async loadBasis(): Promise<void> {
     const choreo = this.guide.choreos[0];
     if (!choreo || !this.resources.available) return;
+    void this.readUploadedGuide();
     const run = ++this.basisRun;
     try {
       const refs = toDataBasis(await this.resources.query<DataBasisResult>(DATA_BASIS, { choreo }));
@@ -484,6 +508,28 @@ export class DiscussionPage implements OnInit {
       this.store.showKept(stimuli);
     } catch {
       // The zones keep what this browser remembers.
+    }
+  }
+
+  /** Reads the uploaded Leitfaden soon: frames come in bursts while the worker runs. */
+  private scheduleGuideRead(delayMs = 800): void {
+    if (this.recorded()) return;
+    if (this.guideReadTimer) clearTimeout(this.guideReadTimer);
+    this.guideReadTimer = setTimeout(() => {
+      this.guideReadTimer = null;
+      void this.readUploadedGuide();
+    }, delayMs);
+  }
+
+  /** Reads the Leitfaden the worker wrote for the first choreo's Inventory into the store. */
+  private async readUploadedGuide(): Promise<void> {
+    const choreo = this.guide.choreos[0];
+    if (!choreo) return;
+    const count = await this.store.refreshGuide(choreo);
+    // A file the worker did not take for a guide keeps saying so, even while an older guide shows.
+    const latest = this.slots.jobsOf('interview-guide').find((j) => j.state === 'done');
+    if (count > 0 && !latest?.message.includes('kein Leitfaden')) {
+      this.slots.noteZone('interview-guide', `Übergeben – ${count} Fragen eingelesen.`);
     }
   }
 

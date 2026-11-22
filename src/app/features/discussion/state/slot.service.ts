@@ -459,7 +459,7 @@ export class SlotService {
     this.update(
       job,
       ok
-        ? { state: 'done', message: 'Übergeben.' }
+        ? { state: 'done', message: zone === 'interview-guide' ? 'Übergeben – wird eingelesen …' : 'Übergeben.' }
         : { state: 'error', message: this.session.error() ?? 'Nicht angenommen.' },
     );
     if (ok) this.note(answer);
@@ -486,6 +486,15 @@ export class SlotService {
   private dropJob(id: number): void {
     this._jobs.update((jobs) => jobs.filter((j) => j.id !== id));
     for (const [zone, held] of this.held) if (held.job === id) this.held.delete(zone);
+  }
+
+  /**
+   * Replaces the message of the zone's latest handed-over file, e.g. once the repository has read
+   * it in ("12 Fragen eingelesen"). Lines still uploading, held or failed are left as they are.
+   */
+  noteZone(zone: DropZone, message: string): void {
+    const job = this._jobs().filter((j) => j.zone === zone && j.state === 'done').at(-1);
+    if (job && job.message !== message) this.update(job.id, { message });
   }
 
   private update(id: number, patch: Partial<IngestJob>): void {
