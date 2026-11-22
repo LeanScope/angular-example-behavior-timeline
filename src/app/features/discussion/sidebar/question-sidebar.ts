@@ -64,7 +64,10 @@ import { DiscussionUiState } from '../state/discussion-ui.state';
               {{ block.title }} <span class="minutes">{{ block.minutes }} min</span>
             </h3>
             <ul>
-              @for (q of block.questions; track q.key) {
+              @for (q of block.questions; track q.key; let i = $index) {
+                @if (q.section && q.section !== block.questions[i - 1]?.section) {
+                  <li class="subsection">{{ q.section }}</li>
+                }
                 <li
                   [class.open]="ui.openQuestionKey() === q.key"
                   [attr.data-question]="q.key"
@@ -261,6 +264,17 @@ import { DiscussionUiState } from '../state/discussion-ui.state';
       border: 2px solid var(--color-border);
       border-radius: var(--radius-pill);
       background: var(--color-bg);
+    }
+    /* A subsection of the block ("1.1. Vorbereitung"): a label above its questions, no pearl. */
+    h3 + ul > li.subsection {
+      margin-top: var(--space-2);
+      padding: var(--space-1) 0 0;
+      color: var(--color-muted);
+      font-size: var(--text-xs);
+      font-weight: 600;
+    }
+    h3 + ul > li.subsection::before {
+      content: none;
     }
     /* Asked: a filled grey pearl. Only the cursor's dot is red. */
     h3 + ul > li[data-state='asked']::before {

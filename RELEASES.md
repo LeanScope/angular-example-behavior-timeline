@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased
+## 0.12.0 — 2026-11-22
 
 - **An uploaded Leitfaden becomes the questions in the sidebar and the timeline's "Leitfaden"
   row.** The agent server's hosted interview-guide worker ("📋 Leitfaden einlesen") is now
@@ -11,6 +11,14 @@
   `StudyStore.refreshGuide()`) when the page opens and whenever a worker reports, without
   `APP_INGEST_CHOREO_GUID` / `APP_STUDY_QUERY_GUID`. The Leitfaden zone's status line says
   "wird eingelesen …", then how many questions were read in, or that the file is no guide.
+- **The Leitfaden keeps its blocks and subsections.** A question's section path ("A. Begrüßung
+  (10 min) / 1.5. Vorstellung") gives its block (the first level where the questions part ways,
+  so a document title is skipped) and, beneath it, its subsection, shown as a small label above
+  its questions in the sidebar. Only " / " with spaces splits the path, so "Headline/Text" stays
+  one heading. Needs agent server 0.169.1, which reads bold Word paragraphs as headings and adds
+  the "Dauer: N Minuten" of a block to it, and 0.169.2, which keeps a question repeated in
+  several blocks (one per campaign) in each of them; upload the Leitfaden again after both are
+  deployed.
 
 ## 0.11.1 — 2026-11-21
 

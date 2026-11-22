@@ -91,13 +91,19 @@ export function toStudy(result: StudyQueryResult | null | undefined): Study {
  */
 export function toGuide(root: DocumentRoot): Guide {
   const questions = sorted(root.children).filter((c) => !c.kind || c.kind === 'question');
-  const sections: { heading: string; items: ChildNode[] }[] = [];
-  for (const q of questions) {
-    const heading = lastSection(q.description);
+  const paths = questions.map((q) => sectionPath(q.description));
+  // The block is the first level where the questions part ways: a document title the nested
+  // questions all sit under is not a block. What lies beneath the block is the subsection.
+  const title = commonPrefix(paths.filter((p) => p.length > 1));
+  const sections: { heading: string; items: { node: ChildNode; section: string }[] }[] = [];
+  questions.forEach((q, i) => {
+    const below = startsWith(paths[i], title) && paths[i].length > title.length ? paths[i].slice(title.length) : paths[i];
+    const heading = below[0] ?? '';
+    const section = below.slice(1).join(' / ');
     const current = sections.at(-1);
-    if (current && current.heading === heading) current.items.push(q);
-    else sections.push({ heading, items: [q] });
-  }
+    if (current && current.heading === heading) current.items.push({ node: q, section });
+    else sections.push({ heading, items: [{ node: q, section }] });
+  });
 
   const parsed = sections.map((s) => parseHeading(s.heading));
   const known = parsed.reduce((sum, p) => sum + (p.minutes ?? 0), 0);
@@ -112,12 +118,13 @@ export function toGuide(root: DocumentRoot): Guide {
       title: parsed[i].title || `Block ${code}`,
       minutes: parsed[i].minutes ?? share,
       tone,
-      questions: section.items.map((q, j) => ({
+      questions: section.items.map(({ node: q, section: sub }, j) => ({
         key: q.key || q.guid,
         code: `${code}${j + 1}`,
         text: (q.line ?? '').trim(),
         blockCode: code,
         tone,
+        ...(sub ? { section: sub } : {}),
       })),
     };
   });
@@ -209,9 +216,24 @@ function sorted(children: ChildNode[] | null | undefined): ChildNode[] {
 }
 
 /** The innermost heading of a section path ("Leitfaden > Block A – Einstieg"). */
-function lastSection(description: string | null | undefined): string {
-  const parts = (description ?? '').split(/\s*[>›»/]\s*|\n/).map((p) => p.trim()).filter(Boolean);
-  return parts.at(-1) ?? '';
+/**
+ * A question's section as its heading path, outermost first. The worker joins the headings with
+ * " / "; a slash without spaces ("Headline/Text") belongs to a heading and does not split it.
+ */
+function sectionPath(description: string | null | undefined): string[] {
+  return (description ?? '').split(/\s+\/\s+|\s*[>›»]\s*|\n/).map((p) => p.trim()).filter(Boolean);
+}
+
+/** The leading headings all paths share, leaving each at least one of its own. */
+function commonPrefix(paths: string[][]): string[] {
+  if (paths.length === 0) return [];
+  let n = 0;
+  while (paths.every((p) => p.length > n + 1 && p[n] === paths[0][n])) n++;
+  return paths[0].slice(0, n);
+}
+
+function startsWith(path: string[], prefix: string[]): boolean {
+  return prefix.every((heading, i) => path[i] === heading);
 }
 
 const MINUTES = /\(?\s*(?:ca\.?\s*)?(\d{1,3})\s*(?:min(?:\.|uten)?|')\s*\)?/i;

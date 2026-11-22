@@ -23,6 +23,8 @@ export interface GuideQuestion {
   text: string;
   blockCode: string;
   tone: number;
+  /** The subsection within its block ("1.1. Vorbereitung und Material"), when the guide has one. */
+  section?: string;
   /** The files the guide names for this question ("Kampagne1.png"): what is on screen when it is asked. */
   materials?: string[];
 }
