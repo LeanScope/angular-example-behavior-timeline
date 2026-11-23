@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.12.1 — 2026-11-23
+
+- **Each document slot remembers its own folder** (Chrome, Edge): the slots open the browser's
+  file dialog with an id of their own (`shared/file-picker.ts`); a slot without a folder yet
+  starts where the last document was picked. Other browsers keep the shared file input.
+- **Slot fixes:** files handed over before a reload show no × any more (they could not be
+  removed); a long file name in a hint wraps instead of pushing its card over the next one; the
+  layout no longer scrolls away under the header (the hidden file inputs stretched the page).
+
 ## 0.12.0 — 2026-11-22
 
 - **An uploaded Leitfaden becomes the questions in the sidebar and the timeline's "Leitfaden"

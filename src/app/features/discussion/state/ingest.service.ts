@@ -24,6 +24,11 @@ export interface IngestJob {
   state: IngestState;
   /** The worker's latest progress line, or the error. */
   message: string;
+  /**
+   * The line cannot be taken away here: a file handed over before the page was reloaded (the
+   * session's answer is no longer held by this page). It shows no ×.
+   */
+  fixed?: boolean;
 }
 
 /** The answer key the ingest choreo's upload step may offer for the drop-zone hint. */

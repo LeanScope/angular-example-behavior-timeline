@@ -11,6 +11,7 @@ import {
 import { DsIcon } from '../../../design-system';
 import { LoadingLine } from '../../analysis/ui/loading-line/loading-line';
 import type { IngestJob } from '../state/ingest.service';
+import { canPickPerPlace, pickFiles } from './file-picker';
 
 /**
  * A place to drop (or pick) documents, with the jobs that read them in. Which kind of document
@@ -23,6 +24,9 @@ import type { IngestJob } from '../state/ingest.service';
  * recording), `'disabled'` is a zone that has no say right now. `skippable` offers "Überspringen"
  * while the zone is asked for a document the session can do without. `busy` says what is being read
  * into the zone, with the brand's busy line, in place of the hint.
+ *
+ * `pickerId` gives the zone a file dialog of its own: it opens in the folder its last document was
+ * picked from (see `pickFiles`; Chromium only, elsewhere the zones share the browser's folder).
  */
 @Component({
   selector: 'app-drop-zone',
@@ -55,6 +59,7 @@ import type { IngestJob } from '../state/ingest.service';
         [attr.accept]="accept()"
         [multiple]="multiple()"
         [disabled]="locked() !== null"
+        (click)="open($event)"
         (change)="pick($event)"
       />
       <!-- Inside the zone: what was handed over, and the way past a document that is optional. -->
@@ -64,7 +69,7 @@ import type { IngestJob } from '../state/ingest.service';
             <span class="job" [attr.data-state]="job.state" role="status">
               <span class="files">{{ job.fileNames.join(', ') }}</span>
               <span class="message">{{ job.message }}</span>
-              @if ((job.state === 'done' && locked() === null) || job.state === 'error') {
+              @if ((job.state === 'done' && locked() === null && !job.fixed) || job.state === 'error') {
                 <button type="button" class="dismiss" aria-label="Meldung schließen" (click)="dismiss.emit(job.id)">
                   <ds-icon name="close" />
                 </button>
@@ -87,6 +92,9 @@ import type { IngestJob } from '../state/ingest.service';
       min-width: 0;
     }
     .target {
+      /* The containing block of the hidden file input: without it, the input is placed relative
+         to the page and stretches it beyond the scrolling area (the whole layout scrolls away). */
+      position: relative;
       display: flex;
       gap: var(--space-3);
       /* The icon sits by the title, whether the hint takes one line or two. */
@@ -151,8 +159,11 @@ import type { IngestJob } from '../state/ingest.service';
     }
     .text {
       display: grid;
+      /* A long file name in the hint wraps instead of widening the zone over its neighbour. */
+      grid-template-columns: minmax(0, 1fr);
       flex: 1;
       min-width: 0;
+      overflow-wrap: anywhere;
       font-size: var(--text-sm);
     }
     /* Every hint reserves two lines, so zones side by side keep one height. */
@@ -263,6 +274,8 @@ export class DropZone {
   readonly asked = input<string | null>(null);
   /** The asked document is optional: the zone offers to go on without it. */
   readonly skippable = input(false);
+  /** The zone's own file dialog, which remembers its folder; null uses the shared one. */
+  readonly pickerId = input<string | null>(null);
   readonly files = output<File[]>();
   readonly dismiss = output<number>();
   readonly skip = output<void>();
@@ -288,6 +301,28 @@ export class DropZone {
     this.over.set(false);
     const files = Array.from(event.dataTransfer?.files ?? []);
     if (files.length && this.locked() === null) this.files.emit(files);
+  }
+
+  /** Set once the zone's own dialog failed here: the file input opens from then on. */
+  private sharedPicker = false;
+
+  /**
+   * A click on the zone (or Enter/Space on its input) opens the zone's own dialog instead of the
+   * shared one, where the browser has it.
+   */
+  protected open(event: MouseEvent): void {
+    const id = this.pickerId();
+    if (!id || this.sharedPicker || !canPickPerPlace()) return;
+    event.preventDefault();
+    const input = event.target as HTMLInputElement;
+    void pickFiles(id, { accept: this.accept(), multiple: this.multiple() }).then((files) => {
+      if (files === 'unsupported') {
+        this.sharedPicker = true;
+        input.click();
+      } else if (files.length && this.locked() === null) {
+        this.files.emit(files);
+      }
+    });
   }
 
   protected pick(event: Event): void {

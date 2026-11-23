@@ -62,6 +62,7 @@ import { ShellContext } from './shell-context';
       grid-template-columns: minmax(0, 1fr);
       grid-template-rows: auto minmax(0, 1fr);
       height: 100dvh;
+      overflow: clip;
       background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-surface-sunken) 100%);
     }
     :host(.embedded) {
@@ -170,9 +171,12 @@ import { ShellContext } from './shell-context';
       width: auto;
       height: 2rem;
     }
+    // The page scrolls inside its own areas, never the shell: clip (unlike hidden) also keeps
+    // scrollIntoView from shifting the content under the header.
     .content {
       min-width: 0;
       min-height: 0;
+      overflow: clip;
     }
     @media (max-width: 48rem) {
       .header {

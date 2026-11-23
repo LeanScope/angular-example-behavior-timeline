@@ -274,7 +274,7 @@ export class DiscussionPage implements OnInit {
       ? undefined
       : (this.basis()[zone]?.map((f) => f.name) ?? this.guide.files()[zone]);
     return names?.length
-      ? [{ id: REMEMBERED_JOB, zone, fileNames: names, state: 'done', message: 'Übergeben.' }]
+      ? [{ id: REMEMBERED_JOB, zone, fileNames: names, state: 'done', message: 'Übergeben.', fixed: true }]
       : [];
   };
   /** The status lines of all documents, read in or handed to the session. */
@@ -645,10 +645,8 @@ export class DiscussionPage implements OnInit {
   }
 
   protected dismissJob(id: number): void {
-    if (id === REMEMBERED_JOB) {
-      this.notice.set('Eine vor dem Neuladen übergebene Datei lässt sich hier nicht mehr entfernen. „Tour zurücksetzen“ fängt von vorn an.');
-      return;
-    }
+    // A remembered line shows no × (see `IngestJob.fixed`).
+    if (id === REMEMBERED_JOB) return;
     this.ingest.dismiss(id);
     this.slots.dismiss(id);
   }

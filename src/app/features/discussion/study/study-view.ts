@@ -58,6 +58,7 @@ const STIMULI = 'image/*,application/pdf';
       [asked]="askedFor('study-brief')"
       [skippable]="asked()?.optional ?? false"
       (skip)="skipped.emit()"
+      pickerId="study-brief"
       (files)="dropped.emit({ zone: 'study-brief', files: $event })"
       (dismiss)="dismiss.emit($event)"
     />
@@ -152,6 +153,7 @@ const STIMULI = 'image/*,application/pdf';
         [asked]="askedFor('interview-guide')"
         [skippable]="asked()?.optional ?? false"
         (skip)="skipped.emit()"
+        pickerId="interview-guide"
         (files)="dropped.emit({ zone: 'interview-guide', files: $event })"
         (dismiss)="dismiss.emit($event)"
       />
@@ -174,6 +176,7 @@ const STIMULI = 'image/*,application/pdf';
         [asked]="askedFor('screener')"
         [skippable]="asked()?.optional ?? false"
         (skip)="skipped.emit()"
+        pickerId="screener"
         (files)="dropped.emit({ zone: 'screener', files: $event })"
         (dismiss)="dismiss.emit($event)"
       />
@@ -195,6 +198,7 @@ const STIMULI = 'image/*,application/pdf';
         [asked]="askedFor('stimulus')"
         [skippable]="asked()?.optional ?? false"
         (skip)="skipped.emit()"
+        pickerId="stimulus"
         (files)="dropped.emit({ zone: 'stimulus', files: $event })"
         (dismiss)="dismiss.emit($event)"
       >
