@@ -1,0 +1,10 @@
+{
+  "id": "centigrade",
+  "name": "Centigrade",
+  "logo": "brands/centigrade/logo.svg",
+  "wordmark": "brands/centigrade/wordmark.svg",
+  "locale": "de",
+  "reportFooter": "Centigrade · Vertraulich",
+  "favicon": "brands/centigrade/favicon.svg",
+  "busyLine": "brands/default/busy-line.svg"
+}

@@ -1,0 +1,88 @@
+/*
+  Centigrade brand, from the Centigrade web styleguide (www.centigrade.de/styleguide):
+  NoiGrotesk, brand blue #006bcd (hover #0a3474), cool neutrals, 0.5rem corners, flat shadows.
+  Colours are the styleguide's own values; only the app's token names differ.
+*/
+@font-face {
+  font-family: NoiGrotesk;
+  src: url('fonts/NoiGrotesk-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: NoiGrotesk;
+  src: url('fonts/NoiGrotesk-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root[data-brand='centigrade'] {
+  /* Primitives: brand blue #006bcd (styleguide --color-brand-300) */
+  --brand-lightness: 53.371%;
+  --brand-hue: 254.45;
+  --brand-chroma: 0.1725;
+  --neutral-hue: 286;
+  --font-family-brand: 'NoiGrotesk', Helvetica, sans-serif;
+  --radius-base: 0.5rem; /* --radius-main */
+
+  /* Neutrals: --color-neutral-100 … 900 */
+  --color-bg: #f3f3f9;
+  --color-surface: #ffffff;
+  --color-surface-sunken: #f3f3f9;
+  --color-border: #dcdce2;
+  --color-text: #0f0f0f;
+  --color-muted: #72757a;
+
+  /* Brand and status */
+  --color-accent: #006bcd;
+  --color-accent-hover: #0a3474;
+  --color-accent-soft: #e6f2fb; /* --brand-subtle */
+  --color-accent-contrast: #ffffff;
+  --color-focus: #0f0f0f; /* the styleguide's focus ring is the text colour */
+  --color-danger: #dc2626;
+  --color-success: #16a34a;
+  --color-warning: #ffd233; /* --color-services-tred */
+
+  /* Charts: brand blue, then the service colours, then a neutral */
+  --chart-1: #006bcd;
+  --chart-2: #46d788;
+  --chart-3: #9d48f4;
+  --chart-4: #ff49b6;
+  --chart-5: #00d8d8;
+  --chart-6: #401dcf;
+  --chart-7: #219cf5;
+  --chart-8: #a7acb4;
+
+  /* Depth and motion */
+  --elevation-1: 0 1px 2px 0 oklch(0% 0 0 / 0.05);
+  --elevation-2: 0 4px 6px -1px oklch(0% 0 0 / 0.07), 0 2px 4px -2px oklch(0% 0 0 / 0.05);
+  --elevation-3: 0 20px 25px -5px oklch(0% 0 0 / 0.1), 0 8px 10px -6px oklch(0% 0 0 / 0.04);
+  --motion-fast: 150ms;
+  --motion-base: 250ms;
+  --motion-slow: 400ms;
+  --ease-standard: cubic-bezier(0.25, 0, 0.3, 1); /* --ease-smooth */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1); /* --ease-out */
+}
+
+/* Dark theme (player mode): the styleguide's inverted neutrals. */
+:root[data-brand='centigrade'] [data-theme='dark'],
+:root[data-brand='centigrade'][data-theme='dark'] {
+  --color-bg: #0f0f0f;
+  --color-surface: #141416;
+  --color-surface-sunken: #1b1b1f;
+  --color-border: #39393d;
+  --color-text: #ffffff;
+  --color-muted: #a7acb4;
+  --color-accent-soft: #0d202e;
+  --color-focus: #ffffff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-brand='centigrade'] {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+  }
+}
