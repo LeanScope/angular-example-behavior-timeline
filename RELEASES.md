@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.11.0 — 2026-11-24
+
+- **Session records are recordings.** The recording picker now lists every `Conversation`
+  scenario, the agent server's session records (`customId: session_<token>`) included. Since
+  leanscope-agent-server 0.172.0 they carry persona guids and step lengths when the choreo's
+  repository is the session repository, so the timeline shows them like a recorded discussion.
+- **Centigrade brand pack** (`APP_BRAND=centigrade`, `public/brands/centigrade/`), from the
+  Centigrade web styleguide: NoiGrotesk, brand blue `#006bcd`, cool neutrals, 0.5rem corners, the
+  service colours as chart palette, a dark variant for player mode, wordmark and favicon.
+
 ## 0.10.3 — 2026-11-17
 
 - **The Wahlplakate demo opens without a login.** `npm run demo:wahlplakate` (APP_DEMO built in)

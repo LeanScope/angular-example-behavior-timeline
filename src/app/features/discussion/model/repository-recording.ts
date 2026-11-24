@@ -22,7 +22,7 @@ import type { ImportedDiscussion, RecordingSource } from './vtt-import';
  * - The guide is a resource the scenario attaches that `IS` an `📋 Interview Guide`.
  *
  * Session records of the agent server are `Conversation` scenarios too (`customId`
- * `session_<token>`). They carry no lengths and no persona guids, so they are not offered.
+ * `session_<token>`) and are offered like any other recording.
  */
 
 /** The recorded discussions of the token's repository. */
@@ -89,7 +89,6 @@ export const RECORDING_RESOURCES = `query RecordingResources($repositoryId: Int!
 
 /** The `📋 Interview Guide` type every guide resource `IS` (agent server `resource-types.ts`). */
 export const INTERVIEW_GUIDE_TYPE = 'e62fbcd0-70ed-4dd6-80a5-c7e9b61256a9';
-const SESSION_RECORD = /^session_/i;
 const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PAGE = 200;
 
@@ -149,11 +148,10 @@ export type RepositoryRecording = ImportedDiscussion & Required<Pick<ImportedDis
 /** `RepositoryResourcesService.query`. */
 export type RunQuery = (document: string, variables?: Record<string, unknown>) => Promise<unknown>;
 
-/** The recordings to offer, by title: `Conversation` scenarios that are no session record. */
+/** The recordings to offer, by title: every `Conversation` scenario, session records included. */
 export function toRecordings(data: unknown): RecordingEntry[] {
   const rows = (data as { uxmData?: { scenarios?: RecordingScenarioRow[] | null } } | null)?.uxmData?.scenarios ?? [];
   return rows
-    .filter((row) => !SESSION_RECORD.test(row.customId?.trim() ?? ''))
     .map((row) => ({ guid: row.guid, title: row.title?.trim() || row.guid }))
     .sort((a, b) => a.title.localeCompare(b.title, 'de', { numeric: true }));
 }

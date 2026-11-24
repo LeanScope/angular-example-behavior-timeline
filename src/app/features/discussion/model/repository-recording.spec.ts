@@ -57,7 +57,7 @@ function chain(turns: Turn[]): RecordingStepRow[] {
 const SCENARIO = { guid: '5df7377e', title: 'Stadtwerke Lindenau 1' };
 
 describe('toRecordings', () => {
-  it('offers the conversations that are no session record, by title', () => {
+  it('offers every conversation, session records included, by title', () => {
     const data = {
       uxmData: {
         scenarios: [
@@ -72,6 +72,7 @@ describe('toRecordings', () => {
       { guid: 's-1', title: 'Lindenau 1' },
       { guid: 's-2', title: 'Lindenau 2' },
       { guid: 's-0', title: 's-0' },
+      { guid: 's-x', title: 'Session 2026-11-16 12:19:53' },
     ]);
     expect(toRecordings(null)).toEqual([]);
   });

@@ -47,3 +47,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Hand-off notes from other repositories (they may hold internal details; this repository is public)
+tasks/
