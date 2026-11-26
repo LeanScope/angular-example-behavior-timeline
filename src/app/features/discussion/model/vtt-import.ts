@@ -73,7 +73,11 @@ export interface ImportedDiscussion {
   description?: string;
   study: Study;
   transcript: Transcript;
-  moderator: { guid: string; name: string; imageUrl: string | null; color: string | null };
+  /**
+   * `assumed`: nobody has the Group Role `Moderator`, so the first speaker takes the moderator's
+   * track. Their badge then shows their own role (`repositoryRoleOf`), not "Moderator".
+   */
+  moderator: { guid: string; name: string; imageUrl: string | null; color: string | null; assumed?: boolean };
   /** Every voice's persona guid (`actorRef`/`personaRef`), the moderator's included. */
   personaRefs: string[];
   /** Stimuli whose image is a repository file (`fileRef`): placed, but not yet in `study`. */

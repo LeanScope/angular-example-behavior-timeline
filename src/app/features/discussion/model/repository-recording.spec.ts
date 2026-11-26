@@ -128,14 +128,18 @@ describe('fromScenarioSteps', () => {
         { guid: 'h', actor: 'human', seconds: 7 },
         { guid: 'u', actor: 'https://example.org/portrait.png', line: 'Aus einer Session' },
         { guid: 'e', actor: MAREN, line: ' ', seconds: 3 },
+        { guid: 'r', actor: MAREN, line: JSON.stringify({ kind: 'review', schema: {}, data: { x: 1 } }), seconds: 4 },
+        { guid: 'n', actor: MAREN, line: JSON.stringify({ kind: 'review', data: {}, note: 'Weiter so' }), seconds: 2 },
         { guid: 'b', actor: ERNST, line: text },
       ]),
     });
     expect(recording.transcript.clips.map((c) => [c.guid, c.start])).toEqual([
       ['a', 0],
-      ['b', 20],
+      ['n', 24],
+      ['b', 26],
     ]);
-    expect(recording.transcript.clips[1].end).toBeCloseTo(20 + speakingSeconds(text));
+    expect(recording.transcript.clips[1].text).toBe('Weiter so');
+    expect(recording.transcript.clips[2].end).toBeCloseTo(26 + speakingSeconds(text));
   });
 
   it('makes the persona with the Group Role the moderator, else the first speaker', () => {
@@ -150,6 +154,7 @@ describe('fromScenarioSteps', () => {
 
     const unnamed = fromScenarioSteps({ scenario: SCENARIO, steps });
     expect(unnamed.moderator.name).toBe('Ernst');
+    expect(unnamed.moderator.assumed).toBe(true);
     expect(unnamed.study.screener?.participants.map((p) => p.name)).toEqual(['Maren']);
   });
 

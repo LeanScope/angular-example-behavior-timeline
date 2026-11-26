@@ -1,4 +1,5 @@
 import type { Step } from '../../../leanscope/agent-server.types';
+import { spokenTextOf } from './step-line';
 import type { Clip, Participant, QuestionBadge, Transcript } from './study.model';
 
 /** Speaking rate used to estimate how long a turn takes. The session has no real timestamps. */
@@ -43,8 +44,8 @@ export function toTranscript(steps: Step[], options: TranscriptOptions): Transcr
     const speakerGuid = step.actorGuid ?? step.actorSymbolRef ?? '';
     if (!speakerGuid || speakerGuid === 'human' || step.pending) continue;
     if (options.speakers && !options.speakers.has(speakerGuid)) continue;
-    const raw = (step.line ?? '').trim();
-    if (!raw || raw.startsWith('{"kind"')) continue;
+    const raw = spokenTextOf(step.line);
+    if (!raw) continue;
 
     const participant = participants.get(speakerGuid);
     const moderator = !participant;

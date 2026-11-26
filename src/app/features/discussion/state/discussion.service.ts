@@ -18,7 +18,7 @@ import {
   slotOf,
   type CastRole,
 } from '../model/slots';
-import { toTranscript } from '../model/transcript-mapper';
+import { MODERATOR_ROLE, toTranscript } from '../model/transcript-mapper';
 import { initialsOf, type Participant, type Transcript } from '../model/study.model';
 import { StudyStore } from './study.store';
 import { createSession } from './session-factory';
@@ -60,6 +60,7 @@ export class DiscussionService {
   private readonly names = signal<Record<string, string>>({});
   private readonly _moderatorImage = signal<string | null>(null);
   private readonly _moderatorColor = signal<string | null>(null);
+  private readonly _moderatorRole = signal<string | null>(null);
   /** Personas that asked for an input: the choreo's director(s). */
   private readonly askers = signal<ReadonlySet<string>>(new Set());
 
@@ -139,6 +140,11 @@ export class DiscussionService {
    * roster (`actors` frame) carries no colours.
    */
   readonly moderatorColor = computed(() => (this.recorded() ? this._moderatorColor() : null));
+  /**
+   * The badge on the moderator's track: "Moderator", or for a recording whose first speaker only
+   * stands in for one (nobody has the Group Role), that persona's own primary role.
+   */
+  readonly moderatorRole = computed(() => (this.recorded() && this._moderatorRole()) || MODERATOR_ROLE);
 
   readonly transcript = computed<Transcript>(() => {
     const recorded = this.recorded();
@@ -242,6 +248,7 @@ export class DiscussionService {
     this.names.set({ [moderator.guid]: moderator.name });
     this._moderatorImage.set(moderator.imageUrl);
     this._moderatorColor.set(moderator.color ?? null);
+    this._moderatorRole.set(null);
     this.recorded.set(transcript);
   }
 
@@ -251,6 +258,7 @@ export class DiscussionService {
     this.names.set({});
     this._moderatorImage.set(null);
     this._moderatorColor.set(null);
+    this._moderatorRole.set(null);
   }
 
   /** The recording with its turns assigned to the guide the repository gave it. */
@@ -266,6 +274,11 @@ export class DiscussionService {
   /** The recording's moderator colour, once the repository has answered. */
   setModeratorColor(color: string | null): void {
     this._moderatorColor.set(color);
+  }
+
+  /** The role the recording's moderator track shows instead of "Moderator" (null: "Moderator"). */
+  setModeratorRole(role: string | null): void {
+    this._moderatorRole.set(role);
   }
 
   /** Name and portrait of a persona of the roster (or the label the question gives it). */

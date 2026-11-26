@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.11.1 — 2026-11-26
+
+- **Recordings skip the agent server's JSON envelopes.** A step whose `line` is an envelope
+  (`{"kind":"review",…}`, `{"kind":"handoff",…}`) is no spoken turn but keeps its time on the
+  clock. A review that carries a `note` reads as that note (`model/step-line.ts`, as the server's
+  `spokenTextOfLine`). Live sessions use the same rule.
+- **A stand-in moderator shows their own role.** When no speaker of a repository recording has
+  the Group Role `Moderator`, the first speaker still takes the top track, but the badge shows the
+  persona's primary role (`primaryRole_.role`) instead of "Moderator", e.g. a CUA session's tester.
+
 ## 0.11.0 — 2026-11-24
 
 - **Session records are recordings.** The recording picker now lists every `Conversation`

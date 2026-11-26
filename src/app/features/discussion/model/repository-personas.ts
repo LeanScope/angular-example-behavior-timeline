@@ -87,6 +87,11 @@ export function repositoryColorOf(
   return own || personas.find((p) => p.guid.toLowerCase() === guid.toLowerCase())?.color?.trim() || null;
 }
 
+/** The persona's primary role (`primaryRole_.role`) from the repository, if it has one. */
+export function repositoryRoleOf(guid: string, personas: readonly PersonaNode[]): string | null {
+  return personas.find((p) => p.guid.toLowerCase() === guid.toLowerCase())?.role?.trim() || null;
+}
+
 /** The moderator's portrait from the repository, unless the recording names one. */
 export function repositoryImageOf(
   guid: string,

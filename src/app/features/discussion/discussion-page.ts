@@ -36,6 +36,7 @@ import { RecordingPicker } from './ui/recording-picker';
 import {
   PERSONAS_BY_GUID,
   repositoryColorOf,
+  repositoryRoleOf,
   repositoryImageOf,
   toRepositoryPersonas,
   withRepositoryPersonas,
@@ -690,6 +691,8 @@ export class DiscussionPage implements OnInit {
     }
     this.discussion.setModeratorImage(repositoryImageOf(imported.moderator.guid, imported.moderator.imageUrl, found));
     this.discussion.setModeratorColor(repositoryColorOf(imported.moderator.guid, imported.moderator.color, found));
+    // A stand-in moderator (nobody has the Group Role) shows their own role, e.g. a tester's.
+    this.discussion.setModeratorRole(imported.moderator.assumed ? repositoryRoleOf(imported.moderator.guid, found) : null);
 
     const failed = [
       ...(personas.status === 'rejected' ? [`Personas: ${reason(personas.reason)}`] : []),

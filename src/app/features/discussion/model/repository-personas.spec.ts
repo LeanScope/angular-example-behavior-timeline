@@ -1,4 +1,4 @@
-import { repositoryImageOf, toRepositoryPersonas, withRepositoryPersonas } from './repository-personas';
+import { repositoryImageOf, repositoryRoleOf, toRepositoryPersonas, withRepositoryPersonas } from './repository-personas';
 import { EMPTY_STUDY, type Participant, type Study } from './study.model';
 
 const ernst: Participant = {
@@ -47,6 +47,15 @@ describe('repositoryImageOf', () => {
     expect(repositoryImageOf('m', null, personas)).toBe('https://media.example/maren.png');
     expect(repositoryImageOf('m', 'own.png', personas)).toBe('own.png');
     expect(repositoryImageOf('x', null, personas)).toBeNull();
+  });
+});
+
+describe('repositoryRoleOf', () => {
+  it('reads the persona’s primary role, by guid in any case', () => {
+    const personas = [{ guid: 'ab', name: 'Sabine', role: ' Endkundin ' }, { guid: 'cd', name: 'Ernst', role: null }];
+    expect(repositoryRoleOf('AB', personas)).toBe('Endkundin');
+    expect(repositoryRoleOf('cd', personas)).toBeNull();
+    expect(repositoryRoleOf('x', personas)).toBeNull();
   });
 });
 

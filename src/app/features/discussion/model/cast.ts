@@ -1,4 +1,5 @@
 import type { ActorRef, Step } from '../../../leanscope/agent-server.types';
+import { spokenTextOf } from './step-line';
 import { initialsOf, type Participant } from './study.model';
 
 /** The moderator of a session, as the timeline and the Steckbrief show it. */
@@ -37,8 +38,7 @@ export function castFromSession(
   for (const step of steps) {
     const guid = step.actorGuid ?? step.actorSymbolRef ?? '';
     if (!guid || guid === 'human' || step.pending || seen.has(guid)) continue;
-    const line = (step.line ?? '').trim();
-    if (!line || line.startsWith('{"kind"')) continue;
+    if (!spokenTextOf(step.line)) continue;
     seen.add(guid);
 
     const actor = roster.get(guid);

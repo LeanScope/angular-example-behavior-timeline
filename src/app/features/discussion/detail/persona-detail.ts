@@ -490,6 +490,8 @@ export class PersonaDetail {
   readonly moderatorName = input('Moderation');
   readonly moderatorImage = input<string | null>(null);
   readonly moderatorColor = input<string | null>(null);
+  /** The badge on the moderator's track (a stand-in's own role in a recording). */
+  readonly moderatorRole = input(MODERATOR_ROLE);
   /** Clears the selection: the pane follows the timeline again. */
   readonly closed = output<void>();
 
@@ -537,7 +539,7 @@ export class PersonaDetail {
     return {
       track: MODERATOR_TRACK,
       name: this.moderatorName(),
-      role: MODERATOR_ROLE,
+      role: this.moderatorRole(),
       subtitle: '',
       color: this.moderatorColor() ?? undefined,
       imageUrl: this.moderatorImage() ?? undefined,

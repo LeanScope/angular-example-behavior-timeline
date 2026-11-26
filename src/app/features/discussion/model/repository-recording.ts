@@ -1,3 +1,4 @@
+import { spokenTextOf } from './step-line';
 import { speakingSeconds } from './transcript-mapper';
 import { initialsOf, type Clip, type Guide, type Participant, type Stimulus } from './study.model';
 import type { ImportedDiscussion, RecordingSource } from './vtt-import';
@@ -15,7 +16,8 @@ import type { ImportedDiscussion, RecordingSource } from './vtt-import';
  * - A step's `duration.time` is the LENGTH of its turn. A turn starts where the turns before it
  *   end. A turn without a length gets the estimate a live session uses (`speakingSeconds`).
  * - Only a persona's step with text is a turn. Any other step is left out but keeps its recorded
- *   time on the clock.
+ *   time on the clock. A JSON envelope (`{"kind":"review",…}`) is no text, unless it carries a
+ *   `note` (`spokenTextOf`).
  * - A resource a step `HAS` that owns a file was shown during that turn (a stimulus). A step that
  *   shows nothing neither ends nor extends a span.
  * - A resource without a file is the turn's topic: its `description` lists the guide questions.
@@ -209,7 +211,7 @@ export function fromScenarioSteps(input: RecordingInput): RepositoryRecording {
   const clock: { step: RecordingStepRow; start: number; end: number }[] = [];
   let at = 0;
   for (const step of activeBranch(input.steps)) {
-    const text = step.line?.replace(/\s+/g, ' ').trim() ?? '';
+    const text = spokenTextOf(step.line).replace(/\s+/g, ' ').trim();
     const speaker = speakerOf(step);
     const recorded = lengthOf(step);
     const length = text && speaker ? (recorded ?? speakingSeconds(text)) : (recorded ?? 0);
@@ -225,7 +227,8 @@ export function fromScenarioSteps(input: RecordingInput): RepositoryRecording {
   const speakers = [...new Set(turns.map((t) => t.speaker))];
   const given = new Set([...(input.moderatorRefs ?? [])].map((g) => g.trim().toLowerCase()));
   const moderating = speakers.filter((s) => given.has(s));
-  const moderatorGuid = moderating.length === 1 ? moderating[0] : speakers[0];
+  const assumed = moderating.length !== 1;
+  const moderatorGuid = assumed ? speakers[0] : moderating[0];
   const nameOf = new Map<string, string>();
   for (const turn of turns) {
     if (!nameOf.has(turn.speaker)) nameOf.set(turn.speaker, turn.step.title?.trim() || turn.speaker);
@@ -266,7 +269,13 @@ export function fromScenarioSteps(input: RecordingInput): RepositoryRecording {
       duration: clips.reduce((max, c) => Math.max(max, c.end), 0),
       scenarioGuid: input.scenario.guid,
     },
-    moderator: { guid: moderatorGuid, name: nameOf.get(moderatorGuid)!, imageUrl: null, color: null },
+    moderator: {
+      guid: moderatorGuid,
+      name: nameOf.get(moderatorGuid)!,
+      imageUrl: null,
+      color: null,
+      ...(assumed ? { assumed: true } : {}),
+    },
     personaRefs: speakers,
     files: shownSpans(clock, resources),
     sources: sourcesOf(input.scenario),

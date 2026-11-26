@@ -222,6 +222,7 @@
         [moderatorName]="discussion.moderatorName()"
         [moderatorImage]="discussion.moderatorImage()"
         [moderatorColor]="discussion.moderatorColor()"
+        [moderatorRole]="discussion.moderatorRole()"
         [playLabel]="playLabel()"
         [playDisabled]="hasClips() ? player.missing().length > 0 : startDisabled()"
         [restartDisabled]="startDisabled()"
@@ -264,6 +265,7 @@
           [moderatorName]="discussion.moderatorName()"
           [moderatorImage]="discussion.moderatorImage()"
           [moderatorColor]="discussion.moderatorColor()"
+          [moderatorRole]="discussion.moderatorRole()"
           (closed)="ui.deselectPersona()"
         />
       </div>

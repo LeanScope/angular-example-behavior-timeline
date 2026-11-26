@@ -116,6 +116,8 @@ export class MultitrackTimeline {
   readonly moderatorImage = input<string | null>(null);
   /** The moderator persona's colour, for the role badge's outline. */
   readonly moderatorColor = input<string | null>(null);
+  /** The badge on the moderator's track (a stand-in's own role in a recording). */
+  readonly moderatorRole = input(MODERATOR_ROLE);
 
   readonly dropped = output<{ zone: DropZone; files: File[] }>();
   readonly stimulusMoved = output<Pick<Stimulus, 'guid' | 'start' | 'end'>>();
@@ -554,7 +556,7 @@ export class MultitrackTimeline {
     const active = untracked(this.activeTrack);
     const cast = this.cast();
     const asked = this.ui.askedPlace();
-    const moderatorHead = speakerHead(MODERATOR, this.moderatorName(), 'MO', true, true, this.moderatorImage(), MODERATOR_ROLE, active, this.moderatorColor() ?? undefined);
+    const moderatorHead = speakerHead(MODERATOR, this.moderatorName(), 'MO', true, true, this.moderatorImage(), this.moderatorRole(), active, this.moderatorColor() ?? undefined);
     if (cast?.editable.moderator) moderatorHead.append(castButton('menu-moderator', 'Moderation wählen', 'chevron-down'));
     const participantsHead = label('Teilnehmende', 'users');
     if (cast?.editable.participants) {
